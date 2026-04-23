@@ -1,0 +1,56 @@
+name: Start Marinesia Cycle
+
+on:
+  workflow_dispatch:
+    inputs:
+      cycle_count:
+        description: "How many full cycles to run"
+        required: true
+        default: "1"
+
+permissions:
+  contents: write
+
+jobs:
+  start-cycle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure output directory exists
+        run: |
+          mkdir -p output
+
+      - name: Initialize rotation state
+        run: |
+          cat > output/rotation_state.json << EOF
+          {
+            "enabled": true,
+            "next_index": 0,
+            "cycle_no": 1,
+            "remaining_cycles": ${{ inputs.cycle_count }},
+            "last_completed_cycle_at": null
+          }
+          EOF
+
+      - name: Show rotation state
+        run: |
+          cat output/rotation_state.json
+
+      - name: Commit state file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add output/rotation_state.json
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Start Marinesia cycle (${{ inputs.cycle_count }} cycle(s))"
+            git push
+          fi
