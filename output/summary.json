@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-04-23T21:36:05",
+  "generated_at": "2026-04-23T22:32:24",
   "summary": {
     "total": 8,
-    "live": 4,
+    "live": 5,
     "stale": 0,
-    "no_signal": 4,
+    "no_signal": 3,
     "cycle_completed_at": null,
     "remaining_cycles": 1
   },
@@ -87,17 +87,17 @@
       "mmsi_no": "352004849",
       "imo_no": "9303778",
       "call_sign": "3E7082",
-      "position_status": "NO_SIGNAL",
-      "current_lat": null,
-      "current_lon": null,
-      "speed": null,
-      "heading": null,
-      "last_seen_at": null,
-      "next_port": null,
-      "eta_ais": null,
+      "position_status": "LIVE",
+      "current_lat": -3.4598651,
+      "current_lon": 109.77918,
+      "speed": 11.3,
+      "heading": 330,
+      "last_seen_at": "2026-04-23T20:37:07",
+      "next_port": "MYTPP",
+      "eta_ais": "04-25 02:30",
       "source": "marinesia",
-      "collected_at": null,
-      "error": "Not fetched yet"
+      "collected_at": "2026-04-23T22:32:24",
+      "error": null
     },
     {
       "shipment_id": "TEST-006",
