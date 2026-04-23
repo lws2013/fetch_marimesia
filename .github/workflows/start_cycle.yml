@@ -6,7 +6,7 @@ on:
       cycle_count:
         description: "How many full cycles to run"
         required: true
-        default: "1"
+        default: "3"
 
 permissions:
   contents: write
@@ -14,12 +14,23 @@ permissions:
 jobs:
   start-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests==2.32.3
 
       - name: Ensure output directory exists
         run: |
@@ -33,7 +44,7 @@ jobs:
 
       - name: Reset summary.json
         run: |
-          cat > output/summary.json << 'EOF'
+          cat > output/summary.json << EOF
           {
             "generated_at": null,
             "summary": {
@@ -60,16 +71,22 @@ jobs:
           }
           EOF
 
-      - name: Show initialized files
+      - name: Run first fetch immediately
+        env:
+          MARINESIA_API_KEY: ${{ secrets.MARINESIA_API_KEY }}
+        run: |
+          python fetch_marinesia_position.py
+
+      - name: Show files after first fetch
         run: |
           echo "---- latest_positions.json ----"
-          cat output/latest_positions.json
+          cat output/latest_positions.json || true
           echo
           echo "---- summary.json ----"
-          cat output/summary.json
+          cat output/summary.json || true
           echo
           echo "---- rotation_state.json ----"
-          cat output/rotation_state.json
+          cat output/rotation_state.json || true
 
       - name: Commit initialized output files
         run: |
@@ -81,6 +98,33 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Start Marinesia cycle (${{ inputs.cycle_count }} cycle(s)) with reset"
+            git commit -m "Start Marinesia cycle (${{ inputs.cycle_count }} cycle(s)) and fetch first vessel"
             git push
           fi
+
+      - name: Decide whether cycle is complete
+        id: cycle_check
+        run: |
+          python - << 'PY'
+          import json
+          import os
+
+          with open("output/rotation_state.json", "r", encoding="utf-8") as f:
+              state = json.load(f)
+
+          completed = "true" if state.get("next_index") == 0 else "false"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"completed={completed}\n")
+
+          print(f"completed={completed}")
+          PY
+
+      - name: Send summary email if cycle completed immediately
+        if: steps.cycle_check.outputs.completed == 'true'
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          COMPANY_EMAIL_TO: ${{ secrets.COMPANY_EMAIL_TO }}
+        run: |
+          python send_summary_email.py
