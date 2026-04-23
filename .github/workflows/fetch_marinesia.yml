@@ -1,0 +1,97 @@
+name: Fetch Marinesia Vessel Positions
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: marinesia-vessel-fetch
+  cancel-in-progress: false
+
+jobs:
+  fetch-positions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Ensure output directory exists
+        run: |
+          mkdir -p output
+
+      - name: Initialize output files if missing
+        run: |
+          test -f output/latest_positions.json || echo "[]" > output/latest_positions.json
+          test -f output/summary.json || printf '{\n  "generated_at": null,\n  "summary": {\n    "total": 0,\n    "live": 0,\n    "stale": 0,\n    "no_signal": 0,\n    "cycle_completed_at": null\n  },\n  "map_items": []\n}\n' > output/summary.json
+          test -f output/rotation_state.json || printf '{\n  "next_index": 0,\n  "cycle_no": 1,\n  "last_completed_cycle_at": null\n}\n' > output/rotation_state.json
+
+      - name: Fetch one vessel from Marinesia
+        env:
+          MARINESIA_API_KEY: ${{ secrets.MARINESIA_API_KEY }}
+        run: |
+          python fetch_marinesia_position.py
+
+      - name: Commit updated output files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add output/latest_positions.json output/summary.json output/rotation_state.json
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update vessel positions from Marinesia"
+            git push
+          fi
+
+      - name: Decide whether cycle is complete
+        id: cycle_check
+        run: |
+          python - << 'PY'
+          import json
+          import os
+          with open("output/rotation_state.json", "r", encoding="utf-8") as f:
+              state = json.load(f)
+          completed = "true" if state.get("next_index") == 0 else "false"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"completed={completed}\n")
+          print(f"completed={completed}")
+          PY
+
+      - name: Send summary email
+        if: steps.cycle_check.outputs.completed == 'true'
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          COMPANY_EMAIL_TO: ${{ secrets.COMPANY_EMAIL_TO }}
+        run: |
+          python send_summary_email.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: marinesia-output
+          path: |
+            output/latest_positions.json
+            output/summary.json
+            output/rotation_state.json
+          if-no-files-found: warn
