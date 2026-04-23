@@ -46,8 +46,10 @@ def load_state() -> Dict[str, Any]:
     return load_json(
         STATE_PATH,
         {
+            "enabled": False,
             "next_index": 0,
             "cycle_no": 1,
+            "remaining_cycles": 0,
             "last_completed_cycle_at": None,
         },
     )
@@ -63,7 +65,6 @@ def load_latest_positions(shipments: List[Dict[str, Any]]) -> Dict[str, Dict[str
             if shipment_id:
                 result_map[shipment_id] = row
 
-    # 입력에 있는 선박은 최소 skeleton 보장
     for row in shipments:
         shipment_id = row["shipment_id"]
         if shipment_id not in result_map:
@@ -92,10 +93,10 @@ def load_latest_positions(shipments: List[Dict[str, Any]]) -> Dict[str, Dict[str
 
 def marinesia_fetch_latest(row: Dict[str, Any], api_key: str) -> Dict[str, Any]:
     """
-    Free plan 기준: v2 latest location endpoint 사용
-    https://api.marinesia.com/api/v2/vessel/location/latest?imo=...&key=...
+    Free plan 기준:
+    GET https://api.marinesia.com/api/v2/vessel/location/latest?imo=...&key=...
     또는
-    https://api.marinesia.com/api/v2/vessel/location/latest?mmsi=...&key=...
+    GET https://api.marinesia.com/api/v2/vessel/location/latest?mmsi=...&key=...
     """
     imo_no = row.get("imo_no")
     mmsi_no = row.get("mmsi_no")
@@ -128,16 +129,16 @@ def marinesia_fetch_latest(row: Dict[str, Any], api_key: str) -> Dict[str, Any]:
             "error": "imo_no and mmsi_no are both missing",
         }
 
-    r = requests.get(base_url, params=params, timeout=30)
-    r.raise_for_status()
-    payload = r.json()
+    response = requests.get(base_url, params=params, timeout=30)
+    response.raise_for_status()
+    payload = response.json()
 
     if payload.get("error") is True:
         return {
             "shipment_id": row["shipment_id"],
             "vessel_name": row.get("vessel_name"),
-            "mmsi_no": mmsi_no,
-            "imo_no": imo_no,
+            "mmsi_no": str(mmsi_no) if mmsi_no else None,
+            "imo_no": str(imo_no) if imo_no else None,
             "call_sign": row.get("call_sign"),
             "ok": False,
             "position_status": "NO_SIGNAL",
@@ -182,7 +183,7 @@ def marinesia_fetch_latest(row: Dict[str, Any], api_key: str) -> Dict[str, Any]:
     }
 
 
-def build_summary(results: List[Dict[str, Any]], cycle_completed_at: str | None) -> Dict[str, Any]:
+def build_summary(results: List[Dict[str, Any]], cycle_completed_at: str | None, remaining_cycles: int) -> Dict[str, Any]:
     live_count = sum(1 for x in results if x.get("position_status") == "LIVE")
     stale_count = sum(1 for x in results if x.get("position_status") == "STALE")
     no_signal_count = sum(1 for x in results if x.get("position_status") == "NO_SIGNAL")
@@ -218,6 +219,7 @@ def build_summary(results: List[Dict[str, Any]], cycle_completed_at: str | None)
             "stale": stale_count,
             "no_signal": no_signal_count,
             "cycle_completed_at": cycle_completed_at,
+            "remaining_cycles": remaining_cycles,
         },
         "map_items": map_items,
     }
@@ -233,43 +235,72 @@ def process_once() -> Tuple[bool, Dict[str, Any]]:
     state = load_state()
     latest_map = load_latest_positions(shipments)
 
+    if state.get("enabled") is not True:
+        print("[INFO] cycle is disabled, skipping fetch")
+        latest_results = [latest_map[row["shipment_id"]] for row in shipments]
+        summary = build_summary(
+            latest_results,
+            state.get("last_completed_cycle_at"),
+            int(state.get("remaining_cycles", 0)),
+        )
+        save_json(LATEST_PATH, latest_results)
+        save_json(SUMMARY_PATH, summary)
+        save_json(STATE_PATH, state)
+        return False, summary
+
     next_index = int(state.get("next_index", 0))
     cycle_no = int(state.get("cycle_no", 1))
+    remaining_cycles = int(state.get("remaining_cycles", 0))
 
     if next_index < 0 or next_index >= len(shipments):
         next_index = 0
 
     target = shipments[next_index]
     print(
-        f"[INFO] cycle={cycle_no}, next_index={next_index}, "
+        f"[INFO] cycle={cycle_no}, remaining_cycles={remaining_cycles}, next_index={next_index}, "
         f"shipment_id={target['shipment_id']}, vessel={target.get('vessel_name')}"
     )
 
     fetched = marinesia_fetch_latest(target, api_key)
     latest_map[target["shipment_id"]] = fetched
 
-    # 다음 index 계산
     completed_cycle = False
+
     if next_index + 1 >= len(shipments):
         completed_cycle = True
         next_index = 0
         cycle_no += 1
         state["last_completed_cycle_at"] = now_iso()
+
+        if remaining_cycles > 0:
+            remaining_cycles -= 1
+
+        state["remaining_cycles"] = remaining_cycles
+        state["enabled"] = remaining_cycles > 0
     else:
         next_index += 1
+        state["enabled"] = True
+        state["remaining_cycles"] = remaining_cycles
 
     state["next_index"] = next_index
     state["cycle_no"] = cycle_no
 
     latest_results = [latest_map[row["shipment_id"]] for row in shipments]
-    summary = build_summary(latest_results, state.get("last_completed_cycle_at"))
+    summary = build_summary(
+        latest_results,
+        state.get("last_completed_cycle_at"),
+        int(state.get("remaining_cycles", 0)),
+    )
 
     save_json(LATEST_PATH, latest_results)
     save_json(SUMMARY_PATH, summary)
     save_json(STATE_PATH, state)
 
     print(f"[INFO] fetched shipment_id={target['shipment_id']}, ok={fetched['ok']}, error={fetched['error']}")
-    print(f"[INFO] completed_cycle={completed_cycle}, next_index={next_index}, cycle_no={cycle_no}")
+    print(
+        f"[INFO] completed_cycle={completed_cycle}, next_index={next_index}, "
+        f"cycle_no={cycle_no}, remaining_cycles={state['remaining_cycles']}, enabled={state['enabled']}"
+    )
 
     return completed_cycle, summary
 
