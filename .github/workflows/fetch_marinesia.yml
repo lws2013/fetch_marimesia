@@ -40,14 +40,41 @@ jobs:
       - name: Initialize output files if missing
         run: |
           test -f output/latest_positions.json || echo "[]" > output/latest_positions.json
-          test -f output/summary.json || printf '{\n  "generated_at": null,\n  "summary": {\n    "total": 0,\n    "live": 0,\n    "stale": 0,\n    "no_signal": 0,\n    "cycle_completed_at": null\n  },\n  "map_items": []\n}\n' > output/summary.json
-          test -f output/rotation_state.json || printf '{\n  "next_index": 0,\n  "cycle_no": 1,\n  "last_completed_cycle_at": null\n}\n' > output/rotation_state.json
+          test -f output/summary.json || printf '{\n  "generated_at": null,\n  "summary": {\n    "total": 0,\n    "live": 0,\n    "stale": 0,\n    "no_signal": 0,\n    "cycle_completed_at": null,\n    "remaining_cycles": 0\n  },\n  "map_items": []\n}\n' > output/summary.json
+          test -f output/rotation_state.json || printf '{\n  "enabled": false,\n  "next_index": 0,\n  "cycle_no": 1,\n  "remaining_cycles": 0,\n  "last_completed_cycle_at": null\n}\n' > output/rotation_state.json
+
+      - name: Check if cycle is enabled
+        id: enabled_check
+        run: |
+          python - << 'PY'
+          import json
+          import os
+
+          with open("output/rotation_state.json", "r", encoding="utf-8") as f:
+              state = json.load(f)
+
+          enabled = "true" if state.get("enabled") is True else "false"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"enabled={enabled}\n")
+
+          print(f"enabled={enabled}")
+          PY
 
       - name: Fetch one vessel from Marinesia
+        if: steps.enabled_check.outputs.enabled == 'true'
         env:
           MARINESIA_API_KEY: ${{ secrets.MARINESIA_API_KEY }}
         run: |
           python fetch_marinesia_position.py
+
+      - name: Show summary
+        run: |
+          echo "---- summary.json ----"
+          cat output/summary.json || true
+          echo
+          echo "---- rotation_state.json ----"
+          cat output/rotation_state.json || true
 
       - name: Commit updated output files
         run: |
@@ -69,16 +96,20 @@ jobs:
           python - << 'PY'
           import json
           import os
+
           with open("output/rotation_state.json", "r", encoding="utf-8") as f:
               state = json.load(f)
+
           completed = "true" if state.get("next_index") == 0 else "false"
+
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write(f"completed={completed}\n")
+
           print(f"completed={completed}")
           PY
 
       - name: Send summary email
-        if: steps.cycle_check.outputs.completed == 'true'
+        if: steps.enabled_check.outputs.enabled == 'true' && steps.cycle_check.outputs.completed == 'true'
         env:
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
