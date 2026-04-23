@@ -15,7 +15,7 @@ concurrency:
 jobs:
   fetch-positions:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -79,8 +79,11 @@ jobs:
         run: |
           python capture_map.py
 
-      - name: Show summary
+      - name: List output files
         run: |
+          echo "---- ls output ----"
+          ls -al output
+          echo
           echo "---- summary.json ----"
           cat output/summary.json || true
           echo
@@ -96,12 +99,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add output/latest_positions.json output/summary.json output/rotation_state.json
+          git add \
+            output/latest_positions.json \
+            output/summary.json \
+            output/rotation_state.json \
+            output/map.html \
+            output/map.png
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Update vessel positions from Marinesia"
+            git commit -m "Update vessel positions and map from Marinesia"
             git push
           fi
 
