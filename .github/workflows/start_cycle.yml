@@ -6,7 +6,7 @@ on:
       cycle_count:
         description: "How many full cycles to run"
         required: true
-        default: "3"
+        default: "1"
 
 permissions:
   contents: write
@@ -25,7 +25,30 @@ jobs:
         run: |
           mkdir -p output
 
-      - name: Initialize rotation state
+      - name: Reset latest_positions.json
+        run: |
+          cat > output/latest_positions.json << 'EOF'
+          []
+          EOF
+
+      - name: Reset summary.json
+        run: |
+          cat > output/summary.json << 'EOF'
+          {
+            "generated_at": null,
+            "summary": {
+              "total": 0,
+              "live": 0,
+              "stale": 0,
+              "no_signal": 0,
+              "cycle_completed_at": null,
+              "remaining_cycles": ${{ inputs.cycle_count }}
+            },
+            "map_items": []
+          }
+          EOF
+
+      - name: Reset rotation_state.json
         run: |
           cat > output/rotation_state.json << EOF
           {
@@ -37,20 +60,27 @@ jobs:
           }
           EOF
 
-      - name: Show rotation state
+      - name: Show initialized files
         run: |
+          echo "---- latest_positions.json ----"
+          cat output/latest_positions.json
+          echo
+          echo "---- summary.json ----"
+          cat output/summary.json
+          echo
+          echo "---- rotation_state.json ----"
           cat output/rotation_state.json
 
-      - name: Commit state file
+      - name: Commit initialized output files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add output/rotation_state.json
+          git add output/latest_positions.json output/summary.json output/rotation_state.json
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Start Marinesia cycle (${{ inputs.cycle_count }} cycle(s))"
+            git commit -m "Start Marinesia cycle (${{ inputs.cycle_count }} cycle(s)) with reset"
             git push
           fi
