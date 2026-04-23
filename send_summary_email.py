@@ -4,16 +4,19 @@ import json
 import os
 import smtplib
 from email.message import EmailMessage
+from email.utils import make_msgid
+from pathlib import Path
 
 
 SUMMARY_PATH = "output/summary.json"
+MAP_PNG_PATH = "output/map.png"
 
 
 def parse_recipients(raw: str) -> list[str]:
     return [x.strip() for x in raw.split(",") if x.strip()]
 
 
-def build_html(summary: dict) -> str:
+def build_html(summary: dict, map_cid: str | None) -> str:
     counts = summary["summary"]
     rows = []
 
@@ -34,7 +37,7 @@ def build_html(summary: dict) -> str:
         )
 
     table_html = f"""
-    <table border="1" cellpadding="6" cellspacing="0">
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; font-size:12px;">
       <thead>
         <tr>
           <th>Shipment ID</th>
@@ -53,9 +56,16 @@ def build_html(summary: dict) -> str:
     </table>
     """
 
+    map_html = ""
+    if map_cid:
+        map_html = f"""
+        <p><b>Route Map</b></p>
+        <p><img src="cid:{map_cid[1:-1]}" style="max-width:100%; border:1px solid #ccc;" /></p>
+        """
+
     html = f"""
     <html>
-      <body>
+      <body style="font-family:Arial, sans-serif; font-size:13px;">
         <p><b>Americas Vessel Position Summary</b></p>
         <p>
           Generated at: {summary.get("generated_at")}<br>
@@ -66,6 +76,7 @@ def build_html(summary: dict) -> str:
           Remaining Cycles: {counts.get("remaining_cycles")}<br>
           Last Completed Cycle At: {counts.get("cycle_completed_at")}
         </p>
+        {map_html}
         {table_html}
       </body>
     </html>
@@ -96,7 +107,25 @@ def main() -> None:
     msg["From"] = gmail_user
     msg["To"] = ", ".join(to_addrs)
     msg.set_content("Please view the HTML version of this email.")
-    msg.add_alternative(build_html(summary), subtype="html")
+
+    map_cid = None
+    if Path(MAP_PNG_PATH).exists():
+        map_cid = make_msgid()
+
+    msg.add_alternative(build_html(summary, map_cid), subtype="html")
+
+    if map_cid and Path(MAP_PNG_PATH).exists():
+        with open(MAP_PNG_PATH, "rb") as f:
+            img_data = f.read()
+
+        html_part = msg.get_payload()[-1]
+        html_part.add_related(
+            img_data,
+            maintype="image",
+            subtype="png",
+            cid=map_cid,
+            filename="map.png",
+        )
 
     with open(SUMMARY_PATH, "rb") as f:
         data = f.read()
