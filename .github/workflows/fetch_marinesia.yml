@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests
+          pip install requests==2.32.3
 
       - name: Ensure output directory exists
         run: |
@@ -75,8 +75,12 @@ jobs:
           echo
           echo "---- rotation_state.json ----"
           cat output/rotation_state.json || true
+          echo
+          echo "---- latest_positions.json ----"
+          cat output/latest_positions.json || true
 
       - name: Commit updated output files
+        if: steps.enabled_check.outputs.enabled == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -92,6 +96,7 @@ jobs:
 
       - name: Decide whether cycle is complete
         id: cycle_check
+        if: steps.enabled_check.outputs.enabled == 'true'
         run: |
           python - << 'PY'
           import json
