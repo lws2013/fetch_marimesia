@@ -6,7 +6,7 @@ on:
       cycle_count:
         description: "How many full cycles to run"
         required: true
-        default: "3"
+        default: "1"
 
 permissions:
   contents: write
@@ -14,7 +14,7 @@ permissions:
 jobs:
   start-cycle:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -86,10 +86,10 @@ jobs:
         run: |
           python capture_map.py
 
-      - name: Show files after first fetch
+      - name: List output files
         run: |
-          echo "---- latest_positions.json ----"
-          cat output/latest_positions.json || true
+          echo "---- ls output ----"
+          ls -al output
           echo
           echo "---- summary.json ----"
           cat output/summary.json || true
@@ -102,7 +102,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add output/latest_positions.json output/summary.json output/rotation_state.json
+          git add \
+            output/latest_positions.json \
+            output/summary.json \
+            output/rotation_state.json \
+            output/map.html \
+            output/map.png
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -137,3 +142,15 @@ jobs:
           COMPANY_EMAIL_TO: ${{ secrets.COMPANY_EMAIL_TO }}
         run: |
           python send_summary_email.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: marinesia-start-output
+          path: |
+            output/latest_positions.json
+            output/summary.json
+            output/rotation_state.json
+            output/map.html
+            output/map.png
+          if-no-files-found: warn
