@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-04-23T18:32:06",
+  "generated_at": "2026-04-23T20:00:32",
   "summary": {
     "total": 8,
-    "live": 1,
+    "live": 2,
     "stale": 0,
-    "no_signal": 7,
+    "no_signal": 6,
     "cycle_completed_at": null,
     "remaining_cycles": 1
   },
@@ -33,17 +33,17 @@
       "mmsi_no": "255917275",
       "imo_no": "9387425",
       "call_sign": "CQ2904",
-      "position_status": "NO_SIGNAL",
-      "current_lat": null,
-      "current_lon": null,
-      "speed": null,
-      "heading": null,
-      "last_seen_at": null,
-      "next_port": null,
-      "eta_ais": null,
+      "position_status": "LIVE",
+      "current_lat": 60.21538,
+      "current_lon": 25.19239,
+      "speed": 0,
+      "heading": 139,
+      "last_seen_at": "2026-04-23T19:30:08",
+      "next_port": "FIHEL",
+      "eta_ais": "04-23 12:00",
       "source": "marinesia",
-      "collected_at": null,
-      "error": "Not fetched yet"
+      "collected_at": "2026-04-23T20:00:32",
+      "error": null
     },
     {
       "shipment_id": "TEST-003",
