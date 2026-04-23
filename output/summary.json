@@ -1,11 +1,48 @@
 {
-  "generated_at": null,
+  "generated_at": "2026-04-23T13:15:32",
   "summary": {
-    "total": 0,
-    "live": 0,
+    "total": 2,
+    "live": 1,
     "stale": 0,
-    "no_signal": 0,
+    "no_signal": 1,
     "cycle_completed_at": null
   },
-  "map_items": []
+  "map_items": [
+    {
+      "shipment_id": "TEST-007",
+      "vessel_name": "MAERSK SAIGON",
+      "mmsi_no": "563032700",
+      "imo_no": "9303534",
+      "call_sign": "9V5630",
+      "position_status": "LIVE",
+      "current_lat": 41.62233,
+      "current_lon": 141.25949,
+      "speed": 14.1,
+      "heading": 86,
+      "last_seen_at": "2026-04-23T12:53:09",
+      "next_port": "MXLZC",
+      "eta_ais": "05-09 21:00",
+      "source": "marinesia",
+      "collected_at": "2026-04-23T13:15:32",
+      "error": null
+    },
+    {
+      "shipment_id": "TEST-008",
+      "vessel_name": "MSC ELBA III",
+      "mmsi_no": "636025296",
+      "imo_no": "9328493",
+      "call_sign": "5LWS8",
+      "position_status": "NO_SIGNAL",
+      "current_lat": null,
+      "current_lon": null,
+      "speed": null,
+      "heading": null,
+      "last_seen_at": null,
+      "next_port": null,
+      "eta_ais": null,
+      "source": "marinesia",
+      "collected_at": null,
+      "error": "Not fetched yet"
+    }
+  ]
 }
