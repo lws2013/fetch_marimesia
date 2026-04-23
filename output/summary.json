@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-04-23T20:00:32",
+  "generated_at": "2026-04-23T20:54:40",
   "summary": {
     "total": 8,
-    "live": 2,
+    "live": 3,
     "stale": 0,
-    "no_signal": 6,
+    "no_signal": 5,
     "cycle_completed_at": null,
     "remaining_cycles": 1
   },
@@ -51,17 +51,17 @@
       "mmsi_no": "477269400",
       "imo_no": "9785811",
       "call_sign": "VRSK4",
-      "position_status": "NO_SIGNAL",
-      "current_lat": null,
-      "current_lon": null,
-      "speed": null,
-      "heading": null,
-      "last_seen_at": null,
-      "next_port": null,
-      "eta_ais": null,
+      "position_status": "LIVE",
+      "current_lat": 42.909512,
+      "current_lon": 147.16508,
+      "speed": 18.7,
+      "heading": 66,
+      "last_seen_at": "2026-04-23T16:14:11",
+      "next_port": "PAPCN",
+      "eta_ais": "05-10 02:00",
       "source": "marinesia",
-      "collected_at": null,
-      "error": "Not fetched yet"
+      "collected_at": "2026-04-23T20:54:40",
+      "error": null
     },
     {
       "shipment_id": "TEST-004",
