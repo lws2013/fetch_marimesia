@@ -4,10 +4,13 @@ import json
 import os
 import smtplib
 from email.message import EmailMessage
-from pathlib import Path
 
 
 SUMMARY_PATH = "output/summary.json"
+
+
+def parse_recipients(raw: str) -> list[str]:
+    return [x.strip() for x in raw.split(",") if x.strip()]
 
 
 def build_html(summary: dict) -> str:
@@ -59,7 +62,9 @@ def build_html(summary: dict) -> str:
           Total: {counts.get("total")} /
           LIVE: {counts.get("live")} /
           STALE: {counts.get("stale")} /
-          NO_SIGNAL: {counts.get("no_signal")}
+          NO_SIGNAL: {counts.get("no_signal")}<br>
+          Remaining Cycles: {counts.get("remaining_cycles")}<br>
+          Last Completed Cycle At: {counts.get("cycle_completed_at")}
         </p>
         {table_html}
       </body>
@@ -71,7 +76,11 @@ def build_html(summary: dict) -> str:
 def main() -> None:
     gmail_user = os.environ["GMAIL_ADDRESS"]
     gmail_app_password = os.environ["GMAIL_APP_PASSWORD"]
-    to_addr = os.environ["COMPANY_EMAIL_TO"]
+    to_addr_raw = os.environ["COMPANY_EMAIL_TO"]
+    to_addrs = parse_recipients(to_addr_raw)
+
+    if not to_addrs:
+        raise RuntimeError("COMPANY_EMAIL_TO is empty")
 
     with open(SUMMARY_PATH, "r", encoding="utf-8") as f:
         summary = json.load(f)
@@ -85,7 +94,7 @@ def main() -> None:
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = gmail_user
-    msg["To"] = to_addr
+    msg["To"] = ", ".join(to_addrs)
     msg.set_content("Please view the HTML version of this email.")
     msg.add_alternative(build_html(summary), subtype="html")
 
@@ -102,7 +111,7 @@ def main() -> None:
         smtp.login(gmail_user, gmail_app_password)
         smtp.send_message(msg)
 
-    print("[INFO] summary email sent")
+    print(f"[INFO] summary email sent to {to_addrs}")
 
 
 if __name__ == "__main__":
