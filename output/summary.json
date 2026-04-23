@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-04-23T13:15:32",
+  "generated_at": "2026-04-23T15:07:22",
   "summary": {
     "total": 2,
-    "live": 1,
+    "live": 2,
     "stale": 0,
-    "no_signal": 1,
-    "cycle_completed_at": null
+    "no_signal": 0,
+    "cycle_completed_at": "2026-04-23T15:07:22"
   },
   "map_items": [
     {
@@ -32,17 +32,17 @@
       "mmsi_no": "636025296",
       "imo_no": "9328493",
       "call_sign": "5LWS8",
-      "position_status": "NO_SIGNAL",
-      "current_lat": null,
-      "current_lon": null,
-      "speed": null,
-      "heading": null,
-      "last_seen_at": null,
-      "next_port": null,
-      "eta_ais": null,
+      "position_status": "LIVE",
+      "current_lat": 14.59641,
+      "current_lon": 120.82253,
+      "speed": 0,
+      "heading": 117,
+      "last_seen_at": "2026-04-23T15:05:46",
+      "next_port": "PHMNN",
+      "eta_ais": "04-18 23:00",
       "source": "marinesia",
-      "collected_at": null,
-      "error": "Not fetched yet"
+      "collected_at": "2026-04-23T15:07:22",
+      "error": null
     }
   ]
 }

@@ -24,17 +24,17 @@
     "mmsi_no": "636025296",
     "imo_no": "9328493",
     "call_sign": "5LWS8",
-    "ok": false,
-    "position_status": "NO_SIGNAL",
+    "ok": true,
+    "position_status": "LIVE",
     "source": "marinesia",
-    "collected_at": null,
-    "current_lat": null,
-    "current_lon": null,
-    "speed": null,
-    "heading": null,
-    "last_seen_at": null,
-    "next_port": null,
-    "eta_ais": null,
-    "error": "Not fetched yet"
+    "collected_at": "2026-04-23T15:07:22",
+    "current_lat": 14.59641,
+    "current_lon": 120.82253,
+    "speed": 0,
+    "heading": 117,
+    "last_seen_at": "2026-04-23T15:05:46",
+    "next_port": "PHMNN",
+    "eta_ais": "04-18 23:00",
+    "error": null
   }
 ]
