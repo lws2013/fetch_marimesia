@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-04-23T17:34:07",
+  "generated_at": "2026-04-23T18:32:06",
   "summary": {
     "total": 8,
     "live": 1,
     "stale": 0,
     "no_signal": 7,
     "cycle_completed_at": null,
-    "remaining_cycles": 3
+    "remaining_cycles": 1
   },
   "map_items": [
     {
@@ -24,7 +24,7 @@
       "next_port": "SAVANNAH",
       "eta_ais": "04-23 01:30",
       "source": "marinesia",
-      "collected_at": "2026-04-23T17:34:07",
+      "collected_at": "2026-04-23T18:32:06",
       "error": null
     },
     {

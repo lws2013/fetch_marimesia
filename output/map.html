@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_cd4440a25fa4f25fa952dd9f4cfcaa54 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+    <div style="
+        position: fixed;
+        top: 10px;
+        left: 50px;
+        z-index: 9999;
+        background-color: rgba(255,255,255,0.9);
+        padding: 8px 12px;
+        border: 1px solid #999;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: bold;
+    ">
+        Americas Vessel Position Map<br>
+        <span style="font-size:11px; font-weight:normal;">
+            Generated: 2026-04-23T18:32:06
+        </span>
+    </div>
+    
+    
+            <div class="folium-map" id="map_cd4440a25fa4f25fa952dd9f4cfcaa54" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_cd4440a25fa4f25fa952dd9f4cfcaa54 = L.map(
+                "map_cd4440a25fa4f25fa952dd9f4cfcaa54",
+                {
+                    center: [32.14013, -81.14314],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 3,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+            L.control.scale().addTo(map_cd4440a25fa4f25fa952dd9f4cfcaa54);
+
+            
+
+        
+    
+            var tile_layer_ceebaa165b2ff49912bde6b349b1df53 = L.tileLayer(
+                "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 20,
+  "maxNativeZoom": 20,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
+  "subdomains": "abcd",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_ceebaa165b2ff49912bde6b349b1df53.addTo(map_cd4440a25fa4f25fa952dd9f4cfcaa54);
+        
+    
+            var poly_line_1366713e4fb323417025c6d4c28df0d6 = L.polyline(
+                [[31.047187, -81.32135]],
+                {"bubblingMouseEvents": true, "color": "#3388ff", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#3388ff", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_cd4440a25fa4f25fa952dd9f4cfcaa54);
+        
+    
+            poly_line_1366713e4fb323417025c6d4c28df0d6.bindTooltip(
+                `<div>
+                     CCNI ANGOL route to SAVANNAH
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_d34f365fa8c6d967962247ccec6efdc5 = L.circleMarker(
+                [32.0809, -81.0998],
+                {"bubblingMouseEvents": true, "color": "#3388ff", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#3388ff", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4, "stroke": true, "weight": 3}
+            ).addTo(map_cd4440a25fa4f25fa952dd9f4cfcaa54);
+        
+    
+        var popup_aef7594e89a9b5736613d9fc092d3965 = L.popup({
+  "maxWidth": 250,
+});
+
+        
+            
+                var html_b8ea546342e8caa32b248b0b8daea7f7 = $(`<div id="html_b8ea546342e8caa32b248b0b8daea7f7" style="width: 100.0%; height: 100.0%;"><b>Next Port</b><br>SAVANNAH</div>`)[0];
+                popup_aef7594e89a9b5736613d9fc092d3965.setContent(html_b8ea546342e8caa32b248b0b8daea7f7);
+            
+        
+
+        circle_marker_d34f365fa8c6d967962247ccec6efdc5.bindPopup(popup_aef7594e89a9b5736613d9fc092d3965)
+        ;
+
+        
+    
+    
+            circle_marker_d34f365fa8c6d967962247ccec6efdc5.bindTooltip(
+                `<div>
+                     Next Port: SAVANNAH
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var circle_marker_5f0bbed4f6ad9e9bbf8cd56aebaf8a59 = L.circleMarker(
+                [32.14013, -81.14314],
+                {"bubblingMouseEvents": true, "color": "#3388ff", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#3388ff", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 6, "stroke": true, "weight": 3}
+            ).addTo(map_cd4440a25fa4f25fa952dd9f4cfcaa54);
+        
+    
+        var popup_84ddff80fd82584c6af97138eb011fff = L.popup({
+  "maxWidth": 320,
+});
+
+        
+            
+                var html_ec9a38f19ecd651b920e2d22e3f4925c = $(`<div id="html_ec9a38f19ecd651b920e2d22e3f4925c" style="width: 100.0%; height: 100.0%;">     <div style="font-size:12px; line-height:1.4;">       <b>CCNI ANGOL</b><br>       Shipment: TEST-001<br>       Status: LIVE<br>       Last Seen: 04-23 16:42<br>       Next Port: SAVANNAH<br>       Lat/Lon: 32.14013, -81.14314     </div>     </div>`)[0];
+                popup_84ddff80fd82584c6af97138eb011fff.setContent(html_ec9a38f19ecd651b920e2d22e3f4925c);
+            
+        
+
+        circle_marker_5f0bbed4f6ad9e9bbf8cd56aebaf8a59.bindPopup(popup_84ddff80fd82584c6af97138eb011fff)
+        ;
+
+        
+    
+    
+            circle_marker_5f0bbed4f6ad9e9bbf8cd56aebaf8a59.bindTooltip(
+                `<div>
+                     CCNI ANGOL
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_fd82aa41366f7f6c8aef85d2d84ea82f = L.marker(
+                [32.14013, -81.14314],
+                {
+}
+            ).addTo(map_cd4440a25fa4f25fa952dd9f4cfcaa54);
+        
+    
+            var div_icon_7fc74f5ceed6c424fd785303b5f4d471 = L.divIcon({
+  "html": "\n            \u003cdiv style=\"\n                font-size: 10px;\n                color: #111;\n                background-color: rgba(255,255,255,0.8);\n                border: 1px solid #999;\n                border-radius: 4px;\n                padding: 2px 4px;\n                white-space: nowrap;\n            \"\u003e\n                CCNI ANGOL\u003cbr\u003e\u003cspan style=\u0027font-size:10px\u0027\u003e04-23 16:42\u003c/span\u003e\n            \u003c/div\u003e\n            ",
+  "iconSize": [180, 36],
+  "iconAnchor": [0, 0],
+  "className": "empty",
+});
+        
+    
+                marker_fd82aa41366f7f6c8aef85d2d84ea82f.setIcon(div_icon_7fc74f5ceed6c424fd785303b5f4d471);
+            
+    
+            map_cd4440a25fa4f25fa952dd9f4cfcaa54.fitBounds(
+                [[32.14013, -81.14314]],
+                {"padding": [40, 40]}
+            );
+        
+</script>
+</html>
