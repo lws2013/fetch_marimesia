@@ -30,7 +30,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests==2.32.3
+          pip install -r requirements.txt
+          playwright install chromium
 
       - name: Ensure output directory exists
         run: |
@@ -76,6 +77,14 @@ jobs:
           MARINESIA_API_KEY: ${{ secrets.MARINESIA_API_KEY }}
         run: |
           python fetch_marinesia_position.py
+
+      - name: Build HTML map
+        run: |
+          python build_map.py
+
+      - name: Capture map image
+        run: |
+          python capture_map.py
 
       - name: Show files after first fetch
         run: |
