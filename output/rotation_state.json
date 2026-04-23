@@ -1,5 +1,7 @@
 {
+  "enabled": false,
   "next_index": 0,
-  "cycle_no": 2,
-  "last_completed_cycle_at": "2026-04-23T15:07:22"
+  "cycle_no": 1,
+  "remaining_cycles": 0,
+  "last_completed_cycle_at": null
 }
