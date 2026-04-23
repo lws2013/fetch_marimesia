@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-04-23T20:54:40",
+  "generated_at": "2026-04-23T21:36:05",
   "summary": {
     "total": 8,
-    "live": 3,
+    "live": 4,
     "stale": 0,
-    "no_signal": 5,
+    "no_signal": 4,
     "cycle_completed_at": null,
     "remaining_cycles": 1
   },
@@ -69,17 +69,17 @@
       "mmsi_no": "563145100",
       "imo_no": "9419668",
       "call_sign": "9V7593",
-      "position_status": "NO_SIGNAL",
-      "current_lat": null,
-      "current_lon": null,
-      "speed": null,
-      "heading": null,
-      "last_seen_at": null,
-      "next_port": null,
-      "eta_ais": null,
+      "position_status": "LIVE",
+      "current_lat": 1.33187,
+      "current_lon": 103.55661,
+      "speed": 0,
+      "heading": 338,
+      "last_seen_at": "2026-04-23T20:48:29",
+      "next_port": "TAJUNG PELEPAS",
+      "eta_ais": "04-23 10:00",
       "source": "marinesia",
-      "collected_at": null,
-      "error": "Not fetched yet"
+      "collected_at": "2026-04-23T21:36:05",
+      "error": null
     },
     {
       "shipment_id": "TEST-005",
