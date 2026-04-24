@@ -1,7 +1,7 @@
 {
-  "enabled": true,
-  "next_index": 7,
-  "cycle_no": 1,
-  "remaining_cycles": 1,
-  "last_completed_cycle_at": null
+  "enabled": false,
+  "next_index": 0,
+  "cycle_no": 2,
+  "remaining_cycles": 0,
+  "last_completed_cycle_at": "2026-04-24T04:30:23"
 }
