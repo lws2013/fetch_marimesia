@@ -1,0 +1,54 @@
+name: Fetch Marinesia Vessel Table
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 1 * * *"
+
+jobs:
+  fetch-table:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ensure output directory exists
+        run: |
+          mkdir -p output
+
+      - name: Fetch Marinesia table
+        env:
+          MARINESIA_API_KEY: ${{ secrets.MARINESIA_API_KEY }}
+        run: |
+          python fetch_marinesia_table.py
+
+      - name: Send email
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          COMPANY_EMAIL_TO: ${{ secrets.COMPANY_EMAIL_TO }}
+        run: |
+          python send_table_email.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: marinesia-table-output
+          path: |
+            output/marinesia_raw.json
+            output/marinesia_table.csv
+            output/marinesia_table.html
+            output/marinesia_latest.json
+          if-no-files-found: warn
