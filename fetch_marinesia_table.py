@@ -46,7 +46,7 @@ def fetch_one(api_key: str, vessel: Dict[str, Any]) -> Dict[str, Any]:
     payload = resp.json()
 
     return {
-        "shipment_id": vessel["shipment_id"],
+        "company": vessel.get("company"),
         "vessel_name": vessel["vessel_name"],
         "query_mmsi_no": mmsi_no,
         "fetched_at": now_iso(),
@@ -58,31 +58,41 @@ def flatten_rows(raw_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
 
     for item in raw_results:
-        shipment_id = item["shipment_id"]
+        company = item.get("company")
         vessel_name = item["vessel_name"]
         query_mmsi_no = item["query_mmsi_no"]
         fetched_at = item["fetched_at"]
         payload = item["response"]
 
+        base_row = {
+            "company": company,
+            "vessel_name": vessel_name,
+            "query_mmsi_no": query_mmsi_no,
+        }
+
         if payload.get("error") is True:
             rows.append(
                 {
-                    "shipment_id": shipment_id,
-                    "vessel_name": vessel_name,
-                    "query_mmsi_no": query_mmsi_no,
+                    **base_row,
                     "mmsi": None,
                     "imo": None,
+                    "com_state": None,
                     "status": None,
                     "pos_acc": None,
+                    "raim": None,
                     "lat": None,
                     "lng": None,
                     "cog": None,
                     "sog": None,
                     "rot": None,
+                    "spare": None,
                     "hdt": None,
                     "dest": None,
                     "eta": None,
                     "draught": None,
+                    "repeat": None,
+                    "smi": None,
+                    "valid": None,
                     "ts": None,
                     "fetched_at": fetched_at,
                     "api_message": payload.get("message"),
@@ -98,22 +108,26 @@ def flatten_rows(raw_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if not data_list:
             rows.append(
                 {
-                    "shipment_id": shipment_id,
-                    "vessel_name": vessel_name,
-                    "query_mmsi_no": query_mmsi_no,
+                    **base_row,
                     "mmsi": None,
                     "imo": None,
+                    "com_state": None,
                     "status": None,
                     "pos_acc": None,
+                    "raim": None,
                     "lat": None,
                     "lng": None,
                     "cog": None,
                     "sog": None,
                     "rot": None,
+                    "spare": None,
                     "hdt": None,
                     "dest": None,
                     "eta": None,
                     "draught": None,
+                    "repeat": None,
+                    "smi": None,
+                    "valid": None,
                     "ts": None,
                     "fetched_at": fetched_at,
                     "api_message": payload.get("message"),
@@ -125,22 +139,26 @@ def flatten_rows(raw_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         for d in data_list:
             rows.append(
                 {
-                    "shipment_id": shipment_id,
-                    "vessel_name": vessel_name,
-                    "query_mmsi_no": query_mmsi_no,
+                    **base_row,
                     "mmsi": d.get("mmsi"),
                     "imo": d.get("imo"),
+                    "com_state": d.get("com_state"),
                     "status": d.get("status"),
                     "pos_acc": d.get("pos_acc"),
+                    "raim": d.get("raim"),
                     "lat": d.get("lat"),
                     "lng": d.get("lng"),
                     "cog": d.get("cog"),
                     "sog": d.get("sog"),
                     "rot": d.get("rot"),
+                    "spare": d.get("spare"),
                     "hdt": d.get("hdt"),
                     "dest": d.get("dest"),
                     "eta": d.get("eta"),
                     "draught": d.get("draught"),
+                    "repeat": d.get("repeat"),
+                    "smi": d.get("smi"),
+                    "valid": d.get("valid"),
                     "ts": d.get("ts"),
                     "fetched_at": fetched_at,
                     "api_message": payload.get("message"),
@@ -150,25 +168,26 @@ def flatten_rows(raw_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
     return rows
 
-
 def build_latest_snapshot(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     latest_map: Dict[str, Dict[str, Any]] = {}
 
     for row in rows:
-        shipment_id = row["shipment_id"]
-        ts = row.get("ts") or ""
-        current = latest_map.get(shipment_id)
-
-        if current is None:
-            latest_map[shipment_id] = row
+        vessel_key = str(row.get("query_mmsi_no") or row.get("mmsi") or "")
+        if not vessel_key:
             continue
 
+        current = latest_map.get(vessel_key)
+        if current is None:
+            latest_map[vessel_key] = row
+            continue
+
+        row_ts = row.get("ts") or ""
         current_ts = current.get("ts") or ""
-        if ts > current_ts:
-            latest_map[shipment_id] = row
+
+        if row_ts > current_ts:
+            latest_map[vessel_key] = row
 
     return list(latest_map.values())
-
 
 def save_csv(rows: List[Dict[str, Any]], path: str) -> None:
     ensure_dir(os.path.dirname(path) or ".")
@@ -244,11 +263,15 @@ def main() -> None:
         try:
             result = fetch_one(api_key, vessel)
             raw_results.append(result)
-            print(f"[INFO] success {vessel['shipment_id']}")
+            print(
+                f"[INFO] success company={vessel.get('company')}, "
+                f"vessel={vessel['vessel_name']}, "
+                f"mmsi={vessel['mmsi_no']}"
+            )
         except Exception as e:
             raw_results.append(
                 {
-                    "shipment_id": vessel["shipment_id"],
+                    "company": vessel.get("company"),
                     "vessel_name": vessel["vessel_name"],
                     "query_mmsi_no": str(vessel["mmsi_no"]),
                     "fetched_at": now_iso(),
@@ -259,7 +282,11 @@ def main() -> None:
                     },
                 }
             )
-            print(f"[WARN] failed {vessel['shipment_id']}: {e}")
+            print(
+                f"[WARN] failed company={vessel.get('company')}, "
+                f"vessel={vessel['vessel_name']}, "
+                f"mmsi={vessel['mmsi_no']}: {e}"
+            )
 
     table_rows = flatten_rows(raw_results)
     latest_rows = build_latest_snapshot(table_rows)
