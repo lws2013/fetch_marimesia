@@ -6,303 +6,549 @@ import os
 import time
 from datetime import datetime
 from html import escape
+from pathlib import Path
 from typing import Any, Dict, List
 
 import requests
 
 
 INPUT_PATH = "input/vessels.json"
+
 RAW_PATH = "output/marinesia_raw.json"
 CSV_PATH = "output/marinesia_table.csv"
 HTML_PATH = "output/marinesia_table.html"
 LATEST_PATH = "output/marinesia_latest.json"
 
-MIN_INTERVAL_SECONDS = 13  # 5 req/min 안전 마진
+# 분당 최대 5회보다 여유 있게 약 4.6회/분으로 호출
+MIN_INTERVAL_SECONDS = 13.0
+
+API_FIELDS = [
+    "mmsi",
+    "imo",
+    "com_state",
+    "status",
+    "pos_acc",
+    "raim",
+    "lat",
+    "lng",
+    "cog",
+    "sog",
+    "rot",
+    "spare",
+    "hdt",
+    "dest",
+    "eta",
+    "draught",
+    "repeat",
+    "smi",
+    "valid",
+    "ts",
+]
+
+OUTPUT_FIELDS = [
+    "company",
+    "vessel_name",
+    "query_mmsi_no",
+    "record_index",
+    *API_FIELDS,
+    "fetched_at",
+    "api_message",
+    "api_error",
+]
 
 
 def now_iso() -> str:
-    return datetime.now().isoformat(timespec="seconds")
+    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def load_vessels() -> List[Dict[str, Any]]:
-    with open(INPUT_PATH, "r", encoding="utf-8") as f:
+def normalize_mmsi(value: Any) -> str:
+    mmsi = str(value or "").strip()
+
+    if not mmsi:
+        raise ValueError("MMSI is empty")
+
+    if not mmsi.isdigit():
+        raise ValueError(f"MMSI must contain digits only: {mmsi}")
+
+    if len(mmsi) != 9:
+        raise ValueError(f"MMSI must be 9 digits: {mmsi}")
+
+    return mmsi
+
+
+def load_vessels() -> List[Dict[str, str]]:
+    path = Path(INPUT_PATH)
+
+    if not path.exists():
+        raise FileNotFoundError(f"Input file not found: {INPUT_PATH}")
+
+    with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
+
     if not isinstance(data, list):
-        raise ValueError("input/vessels.json must be a list")
-    return data
+        raise ValueError("input/vessels.json must contain a JSON list")
+
+    vessels: List[Dict[str, str]] = []
+
+    for index, row in enumerate(data, start=1):
+        if not isinstance(row, dict):
+            raise ValueError(f"Row {index} must be a JSON object")
+
+        company = str(row.get("company") or "").strip().upper()
+        vessel_name = str(row.get("vessel_name") or "").strip()
+        mmsi_no = normalize_mmsi(row.get("mmsi_no"))
+
+        if not company:
+            raise ValueError(f"Row {index}: company is empty")
+
+        if not vessel_name:
+            raise ValueError(f"Row {index}: vessel_name is empty")
+
+        vessels.append(
+            {
+                "company": company,
+                "vessel_name": vessel_name,
+                "mmsi_no": mmsi_no,
+            }
+        )
+
+    return vessels
 
 
-def fetch_one(api_key: str, vessel: Dict[str, Any]) -> Dict[str, Any]:
-    mmsi_no = str(vessel["mmsi_no"])
-    url = f"https://api.marinesia.com/api/v1/vessel/{mmsi_no}/location"
-    params = {"key": api_key}
+def group_vessels_by_mmsi(
+    vessels: List[Dict[str, str]],
+) -> Dict[str, List[Dict[str, str]]]:
+    """
+    동일 MMSI를 법인·선박명 매핑 목록으로 묶는다.
 
-    resp = requests.get(url, params=params, timeout=30)
-    resp.raise_for_status()
-    payload = resp.json()
+    예:
+    {
+      "414195000": [
+        {"company": "SKBA", "vessel_name": "REN JIAN 8"},
+        {"company": "SKBM", "vessel_name": "REN JIAN 8"}
+      ]
+    }
+    """
+    grouped: Dict[str, List[Dict[str, str]]] = {}
+
+    for vessel in vessels:
+        mmsi_no = vessel["mmsi_no"]
+
+        grouped.setdefault(mmsi_no, []).append(
+            {
+                "company": vessel["company"],
+                "vessel_name": vessel["vessel_name"],
+            }
+        )
+
+    return grouped
+
+
+class RequestRateLimiter:
+    def __init__(self, minimum_interval_seconds: float) -> None:
+        self.minimum_interval_seconds = minimum_interval_seconds
+        self.last_request_started_at: float | None = None
+
+    def wait(self) -> None:
+        if self.last_request_started_at is not None:
+            elapsed = time.monotonic() - self.last_request_started_at
+            remaining = self.minimum_interval_seconds - elapsed
+
+            if remaining > 0:
+                print(
+                    f"[INFO] Waiting {remaining:.1f} seconds "
+                    f"for Marinesia rate limit"
+                )
+                time.sleep(remaining)
+
+        self.last_request_started_at = time.monotonic()
+
+
+def fetch_one(
+    session: requests.Session,
+    api_key: str,
+    mmsi_no: str,
+    mappings: List[Dict[str, str]],
+) -> Dict[str, Any]:
+    url = (
+        f"https://api.marinesia.com/api/v1/"
+        f"vessel/{mmsi_no}/location"
+    )
+
+    response = session.get(
+        url,
+        params={"key": api_key},
+        timeout=60,
+    )
+
+    response.raise_for_status()
+    payload = response.json()
+
+    if not isinstance(payload, dict):
+        raise ValueError(
+            f"Unexpected response type for MMSI {mmsi_no}: "
+            f"{type(payload).__name__}"
+        )
 
     return {
-        "company": vessel.get("company"),
-        "vessel_name": vessel["vessel_name"],
         "query_mmsi_no": mmsi_no,
         "fetched_at": now_iso(),
+        "mappings": mappings,
         "response": payload,
     }
 
 
-def flatten_rows(raw_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def build_empty_api_values() -> Dict[str, Any]:
+    return {field: None for field in API_FIELDS}
+
+
+def flatten_rows(
+    raw_results: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    고유 MMSI별 API 응답을 법인·선박 매핑별 테이블 행으로 확장한다.
+
+    동일 MMSI가 SKBA와 SKBM 양쪽에 있으면 동일 응답이
+    각 법인 행에 각각 포함된다.
+    """
     rows: List[Dict[str, Any]] = []
 
     for item in raw_results:
-        company = item.get("company")
-        vessel_name = item["vessel_name"]
         query_mmsi_no = item["query_mmsi_no"]
         fetched_at = item["fetched_at"]
-        payload = item["response"]
+        mappings = item.get("mappings") or []
+        payload = item.get("response") or {}
 
-        base_row = {
-            "company": company,
-            "vessel_name": vessel_name,
-            "query_mmsi_no": query_mmsi_no,
-        }
-
-        if payload.get("error") is True:
-            rows.append(
-                {
-                    **base_row,
-                    "mmsi": None,
-                    "imo": None,
-                    "com_state": None,
-                    "status": None,
-                    "pos_acc": None,
-                    "raim": None,
-                    "lat": None,
-                    "lng": None,
-                    "cog": None,
-                    "sog": None,
-                    "rot": None,
-                    "spare": None,
-                    "hdt": None,
-                    "dest": None,
-                    "eta": None,
-                    "draught": None,
-                    "repeat": None,
-                    "smi": None,
-                    "valid": None,
-                    "ts": None,
-                    "fetched_at": fetched_at,
-                    "api_message": payload.get("message"),
-                    "api_error": True,
-                }
-            )
-            continue
+        api_error = bool(payload.get("error"))
+        api_message = payload.get("message")
 
         data_list = payload.get("data") or []
+
         if not isinstance(data_list, list):
             data_list = []
 
-        if not data_list:
-            rows.append(
-                {
-                    **base_row,
-                    "mmsi": None,
-                    "imo": None,
-                    "com_state": None,
-                    "status": None,
-                    "pos_acc": None,
-                    "raim": None,
-                    "lat": None,
-                    "lng": None,
-                    "cog": None,
-                    "sog": None,
-                    "rot": None,
-                    "spare": None,
-                    "hdt": None,
-                    "dest": None,
-                    "eta": None,
-                    "draught": None,
-                    "repeat": None,
-                    "smi": None,
-                    "valid": None,
-                    "ts": None,
-                    "fetched_at": fetched_at,
-                    "api_message": payload.get("message"),
-                    "api_error": False,
-                }
-            )
+        # API 오류 또는 위치 이력이 없는 경우에도
+        # 입력 선박별로 한 행을 생성한다.
+        if api_error or not data_list:
+            for mapping in mappings:
+                rows.append(
+                    {
+                        "company": mapping.get("company"),
+                        "vessel_name": mapping.get("vessel_name"),
+                        "query_mmsi_no": query_mmsi_no,
+                        "record_index": None,
+                        **build_empty_api_values(),
+                        "fetched_at": fetched_at,
+                        "api_message": api_message,
+                        "api_error": api_error,
+                    }
+                )
+
             continue
 
-        for d in data_list:
-            rows.append(
-                {
-                    **base_row,
-                    "mmsi": d.get("mmsi"),
-                    "imo": d.get("imo"),
-                    "com_state": d.get("com_state"),
-                    "status": d.get("status"),
-                    "pos_acc": d.get("pos_acc"),
-                    "raim": d.get("raim"),
-                    "lat": d.get("lat"),
-                    "lng": d.get("lng"),
-                    "cog": d.get("cog"),
-                    "sog": d.get("sog"),
-                    "rot": d.get("rot"),
-                    "spare": d.get("spare"),
-                    "hdt": d.get("hdt"),
-                    "dest": d.get("dest"),
-                    "eta": d.get("eta"),
-                    "draught": d.get("draught"),
-                    "repeat": d.get("repeat"),
-                    "smi": d.get("smi"),
-                    "valid": d.get("valid"),
-                    "ts": d.get("ts"),
-                    "fetched_at": fetched_at,
-                    "api_message": payload.get("message"),
-                    "api_error": False,
+        # API가 반환한 모든 위치 이력을 법인별로 확장한다.
+        for mapping in mappings:
+            for record_index, data in enumerate(data_list, start=1):
+                if not isinstance(data, dict):
+                    continue
+
+                row = {
+                    "company": mapping.get("company"),
+                    "vessel_name": mapping.get("vessel_name"),
+                    "query_mmsi_no": query_mmsi_no,
+                    "record_index": record_index,
                 }
-            )
+
+                for field in API_FIELDS:
+                    row[field] = data.get(field)
+
+                row["fetched_at"] = fetched_at
+                row["api_message"] = api_message
+                row["api_error"] = api_error
+
+                rows.append(row)
 
     return rows
 
-def build_latest_snapshot(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+
+def build_latest_snapshot(
+    rows: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    company + vessel_name + MMSI별 최신 위치 1건을 남긴다.
+
+    같은 MMSI가 서로 다른 법인에 등록되어 있어도
+    법인별 최신 행이 각각 보존된다.
+    """
     latest_map: Dict[str, Dict[str, Any]] = {}
 
     for row in rows:
-        vessel_key = str(row.get("query_mmsi_no") or row.get("mmsi") or "")
-        if not vessel_key:
-            continue
+        company = str(row.get("company") or "")
+        vessel_name = str(row.get("vessel_name") or "")
+        mmsi_no = str(
+            row.get("query_mmsi_no")
+            or row.get("mmsi")
+            or ""
+        )
+
+        vessel_key = f"{company}|{vessel_name}|{mmsi_no}"
 
         current = latest_map.get(vessel_key)
+
         if current is None:
             latest_map[vessel_key] = row
             continue
 
-        row_ts = row.get("ts") or ""
-        current_ts = current.get("ts") or ""
+        row_ts = str(row.get("ts") or "")
+        current_ts = str(current.get("ts") or "")
 
-        if row_ts > current_ts:
+        # ISO 형식 timestamp이므로 문자열 비교로 최신값 선택 가능
+        if row_ts and (not current_ts or row_ts > current_ts):
             latest_map[vessel_key] = row
 
-    return list(latest_map.values())
+    latest_rows = list(latest_map.values())
 
-def save_csv(rows: List[Dict[str, Any]], path: str) -> None:
-    ensure_dir(os.path.dirname(path) or ".")
-    if not rows:
-        with open(path, "w", encoding="utf-8", newline="") as f:
-            f.write("")
-        return
+    latest_rows.sort(
+        key=lambda row: (
+            str(row.get("company") or ""),
+            str(row.get("vessel_name") or ""),
+            str(row.get("query_mmsi_no") or ""),
+        )
+    )
 
-    fieldnames = list(rows[0].keys())
-    with open(path, "w", encoding="utf-8-sig", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+    return latest_rows
 
 
 def save_json(data: Any, path: str) -> None:
     ensure_dir(os.path.dirname(path) or ".")
+
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
 
 
-def build_html_table(rows: List[Dict[str, Any]]) -> str:
-    if not rows:
-        return "<html><body><p>No data</p></body></html>"
+def save_csv(
+    rows: List[Dict[str, Any]],
+    path: str,
+) -> None:
+    ensure_dir(os.path.dirname(path) or ".")
 
-    headers = list(rows[0].keys())
+    # utf-8-sig로 저장하면 한국어 Excel에서도 바로 열기 편하다.
+    with open(
+        path,
+        "w",
+        encoding="utf-8-sig",
+        newline="",
+    ) as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=OUTPUT_FIELDS,
+            extrasaction="ignore",
+        )
 
-    thead = "".join(f"<th>{escape(str(h))}</th>" for h in headers)
-    body_rows = []
+        writer.writeheader()
+
+        for row in rows:
+            writer.writerow(
+                {
+                    field: row.get(field)
+                    for field in OUTPUT_FIELDS
+                }
+            )
+
+
+def html_value(value: Any) -> str:
+    if value is None:
+        return ""
+
+    if value is True:
+        return "true"
+
+    if value is False:
+        return "false"
+
+    return escape(str(value))
+
+
+def build_html_table(
+    rows: List[Dict[str, Any]],
+) -> str:
+    header_html = "".join(
+        f"<th>{escape(field)}</th>"
+        for field in OUTPUT_FIELDS
+    )
+
+    body_rows: List[str] = []
 
     for row in rows:
-        tds = "".join(f"<td>{escape('' if row.get(h) is None else str(row.get(h)))}</td>" for h in headers)
-        body_rows.append(f"<tr>{tds}</tr>")
+        cells = "".join(
+            f"<td>{html_value(row.get(field))}</td>"
+            for field in OUTPUT_FIELDS
+        )
 
-    html = f"""
-    <html>
-      <body style="font-family:Arial, sans-serif; font-size:12px;">
-        <p><b>Marinesia Vessel Table</b></p>
-        <p>Generated at: {escape(now_iso())}</p>
-        <table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;">
-          <thead>
-            <tr>{thead}</tr>
-          </thead>
-          <tbody>
-            {''.join(body_rows)}
-          </tbody>
-        </table>
-      </body>
-    </html>
-    """
-    return html
+        body_rows.append(f"<tr>{cells}</tr>")
+
+    return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Marinesia Vessel Table</title>
+</head>
+<body style="
+  margin: 0;
+  padding: 20px;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #222;
+">
+  <h2 style="margin: 0 0 8px 0;">
+    Marinesia Vessel Position Table
+  </h2>
+
+  <p style="margin: 0 0 16px 0; color: #666;">
+    Generated at: {escape(now_iso())}<br>
+    Total table rows: {len(rows)}
+  </p>
+
+  <div style="overflow-x: auto;">
+    <table style="
+      border-collapse: collapse;
+      white-space: nowrap;
+      font-size: 12px;
+    ">
+      <thead>
+        <tr style="background-color: #f0f0f0;">
+          {header_html}
+        </tr>
+      </thead>
+      <tbody>
+        {''.join(body_rows)}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
+""".replace(
+        "<th>",
+        '<th style="border:1px solid #bbb;padding:5px 7px;">',
+    ).replace(
+        "<td>",
+        '<td style="border:1px solid #ccc;padding:4px 6px;">',
+    )
 
 
 def main() -> None:
-    api_key = os.environ["MARINESIA_API_KEY"]
-    vessels = load_vessels()
+    api_key = os.environ.get("MARINESIA_API_KEY", "").strip()
+
+    if not api_key:
+        raise RuntimeError(
+            "MARINESIA_API_KEY environment variable is empty"
+        )
+
     ensure_dir("output")
 
+    vessels = load_vessels()
+    grouped = group_vessels_by_mmsi(vessels)
+
+    print(f"[INFO] Total vessel mappings: {len(vessels)}")
+    print(f"[INFO] Unique MMSIs to request: {len(grouped)}")
+    print(
+        f"[INFO] Duplicate API calls avoided: "
+        f"{len(vessels) - len(grouped)}"
+    )
+
     raw_results: List[Dict[str, Any]] = []
-    last_request_started_at: float | None = None
 
-    for i, vessel in enumerate(vessels, start=1):
-        if last_request_started_at is not None:
-            elapsed = time.time() - last_request_started_at
-            if elapsed < MIN_INTERVAL_SECONDS:
-                wait_sec = MIN_INTERVAL_SECONDS - elapsed
-                print(f"[INFO] waiting {wait_sec:.1f}s for rate limit safety")
-                time.sleep(wait_sec)
+    limiter = RequestRateLimiter(
+        minimum_interval_seconds=MIN_INTERVAL_SECONDS
+    )
 
-        print(f"[INFO] ({i}/{len(vessels)}) fetching {vessel['vessel_name']} | MMSI={vessel['mmsi_no']}")
-        last_request_started_at = time.time()
+    with requests.Session() as session:
+        session.headers.update(
+            {
+                "Accept": "application/json",
+                "User-Agent": "SK-On-Marinesia-GitHub-Action/1.0",
+            }
+        )
 
-        try:
-            result = fetch_one(api_key, vessel)
-            raw_results.append(result)
+        for index, (mmsi_no, mappings) in enumerate(
+            grouped.items(),
+            start=1,
+        ):
+            limiter.wait()
+
+            mapped_names = ", ".join(
+                f"{x['company']}:{x['vessel_name']}"
+                for x in mappings
+            )
+
             print(
-                f"[INFO] success company={vessel.get('company')}, "
-                f"vessel={vessel['vessel_name']}, "
-                f"mmsi={vessel['mmsi_no']}"
+                f"[INFO] ({index}/{len(grouped)}) "
+                f"Fetching MMSI={mmsi_no} | {mapped_names}"
             )
-        except Exception as e:
-            raw_results.append(
-                {
-                    "company": vessel.get("company"),
-                    "vessel_name": vessel["vessel_name"],
-                    "query_mmsi_no": str(vessel["mmsi_no"]),
-                    "fetched_at": now_iso(),
-                    "response": {
-                        "error": True,
-                        "message": str(e),
-                        "data": [],
-                    },
-                }
-            )
-            print(
-                f"[WARN] failed company={vessel.get('company')}, "
-                f"vessel={vessel['vessel_name']}, "
-                f"mmsi={vessel['mmsi_no']}: {e}"
-            )
+
+            try:
+                result = fetch_one(
+                    session=session,
+                    api_key=api_key,
+                    mmsi_no=mmsi_no,
+                    mappings=mappings,
+                )
+
+                raw_results.append(result)
+
+                response_payload = result.get("response") or {}
+                response_data = response_payload.get("data") or []
+
+                print(
+                    f"[INFO] Success MMSI={mmsi_no}, "
+                    f"records={len(response_data)}"
+                )
+
+            except Exception as exc:
+                print(
+                    f"[WARN] Failed MMSI={mmsi_no}: {exc}"
+                )
+
+                raw_results.append(
+                    {
+                        "query_mmsi_no": mmsi_no,
+                        "fetched_at": now_iso(),
+                        "mappings": mappings,
+                        "response": {
+                            "error": True,
+                            "message": str(exc),
+                            "data": [],
+                        },
+                    }
+                )
 
     table_rows = flatten_rows(raw_results)
     latest_rows = build_latest_snapshot(table_rows)
-    html = build_html_table(table_rows)
 
     save_json(raw_results, RAW_PATH)
     save_csv(table_rows, CSV_PATH)
     save_json(latest_rows, LATEST_PATH)
 
+    html = build_html_table(table_rows)
+
     with open(HTML_PATH, "w", encoding="utf-8") as f:
         f.write(html)
 
-    print(f"[INFO] saved raw: {RAW_PATH}")
-    print(f"[INFO] saved csv: {CSV_PATH}")
-    print(f"[INFO] saved html: {HTML_PATH}")
-    print(f"[INFO] saved latest: {LATEST_PATH}")
+    print(f"[INFO] Saved raw JSON: {RAW_PATH}")
+    print(f"[INFO] Saved full CSV: {CSV_PATH}")
+    print(f"[INFO] Saved full HTML: {HTML_PATH}")
+    print(f"[INFO] Saved latest JSON: {LATEST_PATH}")
+    print(f"[INFO] Full table rows: {len(table_rows)}")
+    print(f"[INFO] Latest vessel mappings: {len(latest_rows)}")
 
 
 if __name__ == "__main__":
