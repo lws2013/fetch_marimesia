@@ -328,5 +328,170 @@
     "company": "SKBM",
     "vessel_name": "YANTIAN EXPRESS",
     "mmsi_no": "636093161"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "RIZHAO ORIENT",
+    "mmsi_no": "355925000"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "MAERSK VALLVIK",
+    "mmsi_no": "564837000"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "AL MURABBA",
+    "mmsi_no": "636093171"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "NINGBO EXPRESS",
+    "mmsi_no": "636093154"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "HONOR PROSPER",
+    "mmsi_no": "311002270"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "NEW CAMELLIA",
+    "mmsi_no": "431602232"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "UMM QARN",
+    "mmsi_no": "211882930"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "BRUSSELS EXPRESS",
+    "mmsi_no": "211108000"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "MAERSK CAMPBELL",
+    "mmsi_no": "636021339"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "MAERSK CAP JERVIS",
+    "mmsi_no": "563052700"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "MSC BERANGERE",
+    "mmsi_no": "636021665"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "MSC BRIDGEPORT",
+    "mmsi_no": "255803680"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "MSC SONIA",
+    "mmsi_no": "353160000"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "REN JIAN 15",
+    "mmsi_no": "414931000"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "RIO KOBE",
+    "mmsi_no": "636025865"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "TAN CANG GLORY",
+    "mmsi_no": "574002930"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "ULSAN",
+    "mmsi_no": "636022118"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "AL JASRAH",
+    "mmsi_no": "636093137"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "AL NASRIYAH",
+    "mmsi_no": "211886810"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "CMA CGM HERMES",
+    "mmsi_no": "229454000"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "CMA CGM ZEPHYR",
+    "mmsi_no": "229321000"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "ERASMUS CHIEF",
+    "mmsi_no": "352004606"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "MAERSK CAMDEN",
+    "mmsi_no": "636021338"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "MSC DOMNA X",
+    "mmsi_no": "636022657"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "MSC UTMOST VIII",
+    "mmsi_no": "210643000"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "VIRGO",
+    "mmsi_no": "215561000"
+  },
+  {
+    "company": "SKOH",
+    "vessel_name": "YANTIAN EXPRESS",
+    "mmsi_no": "636093161"
+  },
+  {
+    "company": "SKBM",
+    "vessel_name": "MSC SONIA",
+    "mmsi_no": "353160000"
+  },
+  {
+    "company": "SKBM",
+    "vessel_name": "MAERSK CAMPBELL",
+    "mmsi_no": "636021339"
+  },
+  {
+    "company": "SKBM",
+    "vessel_name": "MSC BRIDGEPORT",
+    "mmsi_no": "255803680"
+  },
+  {
+    "company": "SKBM",
+    "vessel_name": "MSC C. MONTAINE",
+    "mmsi_no": "636021667"
+  },
+  {
+    "company": "SKBM",
+    "vessel_name": "MSC DOMNA X",
+    "mmsi_no": "636022657"
+  },
+  {
+    "company": "SKBM",
+    "vessel_name": "RIO KOBE",
+    "mmsi_no": "636025865"
   }
 ]
