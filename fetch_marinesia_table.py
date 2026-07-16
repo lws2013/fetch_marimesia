@@ -19,6 +19,13 @@ CSV_PATH = "output/marinesia_table.csv"
 HTML_PATH = "output/marinesia_table.html"
 LATEST_PATH = "output/marinesia_latest.json"
 
+BULK_SIZE = 10
+
+BULK_URL = (
+    "https://api.marinesia.com/api/v1/"
+    "vessel/location/latest/bulk"
+)
+
 # 분당 최대 5회보다 여유 있게 약 4.6회/분으로 호출
 MIN_INTERVAL_SECONDS = 13.0
 
@@ -167,40 +174,180 @@ class RequestRateLimiter:
 
         self.last_request_started_at = time.monotonic()
 
+def chunked(
+    values: List[str],
+    size: int,
+) -> List[List[str]]:
+    return [
+        values[index:index + size]
+        for index in range(0, len(values), size)
+    ]
 
-def fetch_one(
+
+def normalize_bulk_data(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Bulk API의 data를 항상 위치정보 dict 목록으로 정규화한다.
+    """
+    data = payload.get("data")
+
+    if isinstance(data, list):
+        return [
+            row
+            for row in data
+            if isinstance(row, dict)
+        ]
+
+    if isinstance(data, dict):
+        # data가 MMSI별 dict 형태로 반환되는 경우도 방어적으로 처리
+        records: List[Dict[str, Any]] = []
+
+        for value in data.values():
+            if isinstance(value, dict):
+                records.append(value)
+            elif isinstance(value, list):
+                records.extend(
+                    row
+                    for row in value
+                    if isinstance(row, dict)
+                )
+
+        return records
+
+    return []
+
+
+def select_latest_by_mmsi(
+    records: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    """
+    응답에 같은 MMSI가 여러 번 들어오더라도 ts 기준 최신 1건만 선택한다.
+    """
+    result: Dict[str, Dict[str, Any]] = {}
+
+    for record in records:
+        mmsi = str(record.get("mmsi") or "").strip()
+
+        if not mmsi:
+            continue
+
+        current = result.get(mmsi)
+
+        if current is None:
+            result[mmsi] = record
+            continue
+
+        record_ts = str(record.get("ts") or "")
+        current_ts = str(current.get("ts") or "")
+
+        if record_ts and (
+            not current_ts
+            or record_ts > current_ts
+        ):
+            result[mmsi] = record
+
+    return result
+
+
+def fetch_bulk(
     session: requests.Session,
     api_key: str,
-    mmsi_no: str,
-    mappings: List[Dict[str, str]],
+    mmsi_batch: List[str],
 ) -> Dict[str, Any]:
-    url = (
-        f"https://api.marinesia.com/api/v1/"
-        f"vessel/{mmsi_no}/location"
-    )
+    """
+    최대 10개의 MMSI를 한 번의 API 요청으로 조회한다.
+    """
+    if not mmsi_batch:
+        raise ValueError("mmsi_batch is empty")
+
+    if len(mmsi_batch) > BULK_SIZE:
+        raise ValueError(
+            f"Bulk request supports max {BULK_SIZE} MMSIs, "
+            f"received {len(mmsi_batch)}"
+        )
 
     response = session.get(
-        url,
-        params={"key": api_key},
+        BULK_URL,
+        params={
+            "mmsi": ",".join(mmsi_batch),
+            "key": api_key,
+        },
         timeout=60,
     )
 
     response.raise_for_status()
+
     payload = response.json()
 
     if not isinstance(payload, dict):
         raise ValueError(
-            f"Unexpected response type for MMSI {mmsi_no}: "
+            "Unexpected Bulk API response type: "
             f"{type(payload).__name__}"
         )
 
-    return {
-        "query_mmsi_no": mmsi_no,
-        "fetched_at": now_iso(),
-        "mappings": mappings,
-        "response": payload,
-    }
+    return payload
 
+
+def expand_bulk_response(
+    payload: Dict[str, Any],
+    mmsi_batch: List[str],
+    grouped: Dict[str, List[Dict[str, str]]],
+    fetched_at: str,
+) -> List[Dict[str, Any]]:
+    """
+    Bulk 응답을 기존 raw_results 구조로 변환한다.
+
+    따라서 flatten_rows()와 build_latest_snapshot()은
+    수정하지 않고 그대로 사용할 수 있다.
+    """
+    result: List[Dict[str, Any]] = []
+
+    api_error = bool(payload.get("error"))
+    api_message = payload.get("message")
+    records = normalize_bulk_data(payload)
+    records_by_mmsi = select_latest_by_mmsi(records)
+
+    for mmsi_no in mmsi_batch:
+        record = records_by_mmsi.get(mmsi_no)
+
+        if api_error:
+            vessel_response = {
+                "error": True,
+                "message": api_message or "Bulk API returned error",
+                "data": [],
+            }
+
+        elif record is None:
+            vessel_response = {
+                "error": False,
+                "message": (
+                    f"No latest location returned for MMSI "
+                    f"{mmsi_no}"
+                ),
+                "data": [],
+            }
+
+        else:
+            vessel_response = {
+                "error": False,
+                "message": (
+                    api_message
+                    or "Successfully fetched data"
+                ),
+                # 기존 flatten_rows()가 data 배열을 처리하므로
+                # 최신 위치 1건도 배열 형태로 유지
+                "data": [record],
+            }
+
+        result.append(
+            {
+                "query_mmsi_no": mmsi_no,
+                "fetched_at": fetched_at,
+                "mappings": grouped.get(mmsi_no, []),
+                "response": vessel_response,
+            }
+        )
+
+    return result
 
 def build_empty_api_values() -> Dict[str, Any]:
     return {field: None for field in API_FIELDS}
@@ -446,7 +593,10 @@ def build_html_table(
 
 
 def main() -> None:
-    api_key = os.environ.get("MARINESIA_API_KEY", "").strip()
+    api_key = os.environ.get(
+        "MARINESIA_API_KEY",
+        "",
+    ).strip()
 
     if not api_key:
         raise RuntimeError(
@@ -458,11 +608,19 @@ def main() -> None:
     vessels = load_vessels()
     grouped = group_vessels_by_mmsi(vessels)
 
+    unique_mmsi_list = list(grouped.keys())
+    batches = chunked(
+        unique_mmsi_list,
+        BULK_SIZE,
+    )
+
     print(f"[INFO] Total vessel mappings: {len(vessels)}")
-    print(f"[INFO] Unique MMSIs to request: {len(grouped)}")
+    print(f"[INFO] Unique MMSIs: {len(unique_mmsi_list)}")
+    print(f"[INFO] Bulk request size: {BULK_SIZE}")
+    print(f"[INFO] Total Bulk API requests: {len(batches)}")
     print(
-        f"[INFO] Duplicate API calls avoided: "
-        f"{len(vessels) - len(grouped)}"
+        f"[INFO] Duplicate MMSI requests avoided: "
+        f"{len(vessels) - len(unique_mmsi_list)}"
     )
 
     raw_results: List[Dict[str, Any]] = []
@@ -475,62 +633,79 @@ def main() -> None:
         session.headers.update(
             {
                 "Accept": "application/json",
-                "User-Agent": "SK-On-Marinesia-GitHub-Action/1.0",
+                "User-Agent": (
+                    "SK-On-Marinesia-GitHub-Action/2.0"
+                ),
             }
         )
 
-        for index, (mmsi_no, mappings) in enumerate(
-            grouped.items(),
+        for batch_index, mmsi_batch in enumerate(
+            batches,
             start=1,
         ):
             limiter.wait()
 
-            mapped_names = ", ".join(
-                f"{x['company']}:{x['vessel_name']}"
-                for x in mappings
+            print(
+                f"[INFO] Bulk request "
+                f"{batch_index}/{len(batches)} | "
+                f"vessels={len(mmsi_batch)} | "
+                f"MMSI={','.join(mmsi_batch)}"
             )
 
-            print(
-                f"[INFO] ({index}/{len(grouped)}) "
-                f"Fetching MMSI={mmsi_no} | {mapped_names}"
-            )
+            fetched_at = now_iso()
 
             try:
-                result = fetch_one(
+                payload = fetch_bulk(
                     session=session,
                     api_key=api_key,
-                    mmsi_no=mmsi_no,
-                    mappings=mappings,
+                    mmsi_batch=mmsi_batch,
                 )
 
-                raw_results.append(result)
+                batch_results = expand_bulk_response(
+                    payload=payload,
+                    mmsi_batch=mmsi_batch,
+                    grouped=grouped,
+                    fetched_at=fetched_at,
+                )
 
-                response_payload = result.get("response") or {}
-                response_data = response_payload.get("data") or []
+                raw_results.extend(batch_results)
+
+                returned_records = normalize_bulk_data(
+                    payload
+                )
 
                 print(
-                    f"[INFO] Success MMSI={mmsi_no}, "
-                    f"records={len(response_data)}"
+                    f"[INFO] Bulk request success | "
+                    f"requested={len(mmsi_batch)}, "
+                    f"returned={len(returned_records)}"
                 )
 
             except Exception as exc:
                 print(
-                    f"[WARN] Failed MMSI={mmsi_no}: {exc}"
+                    f"[WARN] Bulk request failed | "
+                    f"MMSI={','.join(mmsi_batch)} | "
+                    f"error={exc}"
                 )
 
-                raw_results.append(
-                    {
-                        "query_mmsi_no": mmsi_no,
-                        "fetched_at": now_iso(),
-                        "mappings": mappings,
-                        "response": {
-                            "error": True,
-                            "message": str(exc),
-                            "data": [],
-                        },
-                    }
-                )
+                # Bulk 요청 하나가 실패하더라도 다른 batch는 계속 진행한다.
+                for mmsi_no in mmsi_batch:
+                    raw_results.append(
+                        {
+                            "query_mmsi_no": mmsi_no,
+                            "fetched_at": fetched_at,
+                            "mappings": grouped.get(
+                                mmsi_no,
+                                [],
+                            ),
+                            "response": {
+                                "error": True,
+                                "message": str(exc),
+                                "data": [],
+                            },
+                        }
+                    )
 
+    # 아래 부분은 기존 구조를 그대로 사용
     table_rows = flatten_rows(raw_results)
     latest_rows = build_latest_snapshot(table_rows)
 
@@ -540,15 +715,47 @@ def main() -> None:
 
     html = build_html_table(table_rows)
 
-    with open(HTML_PATH, "w", encoding="utf-8") as f:
+    with open(
+        HTML_PATH,
+        "w",
+        encoding="utf-8",
+    ) as f:
         f.write(html)
+
+    success_count = sum(
+        1
+        for row in latest_rows
+        if row.get("api_error") is not True
+        and row.get("lat") is not None
+        and row.get("lng") is not None
+    )
+
+    error_count = sum(
+        1
+        for row in latest_rows
+        if row.get("api_error") is True
+    )
+
+    no_location_count = (
+        len(latest_rows)
+        - success_count
+        - error_count
+    )
 
     print(f"[INFO] Saved raw JSON: {RAW_PATH}")
     print(f"[INFO] Saved full CSV: {CSV_PATH}")
     print(f"[INFO] Saved full HTML: {HTML_PATH}")
     print(f"[INFO] Saved latest JSON: {LATEST_PATH}")
     print(f"[INFO] Full table rows: {len(table_rows)}")
-    print(f"[INFO] Latest vessel mappings: {len(latest_rows)}")
+    print(
+        f"[INFO] Latest vessel mappings: "
+        f"{len(latest_rows)}"
+    )
+    print(
+        f"[INFO] Location success: {success_count}, "
+        f"no location: {no_location_count}, "
+        f"API error: {error_count}"
+    )
 
 
 if __name__ == "__main__":
