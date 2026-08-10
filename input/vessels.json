@@ -140,6 +140,11 @@
     "mmsi_no": "563052700"
   },
   {
+    "vessel_name": "MAERSK TAURUS",
+    "imo_no": "",
+    "mmsi_no": "565762000"
+  },
+  {
     "vessel_name": "MAERSK VALLVIK",
     "imo_no": "9411381",
     "mmsi_no": "564837000"
@@ -313,6 +318,11 @@
     "vessel_name": "UMM QARN",
     "imo_no": "9732333",
     "mmsi_no": "211882930"
+  },
+  {
+    "vessel_name": "UNI PERFECT",
+    "imo_no": "",
+    "mmsi_no": "357979000"
   },
   {
     "vessel_name": "UNI POPULAR",
