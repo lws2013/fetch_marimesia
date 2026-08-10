@@ -21,8 +21,10 @@ LATEST_PATH = "output/marinesia_latest.json"
 
 BULK_SIZE = 10
 
+# v2는 IMO 조회를 지원한다. imo와 mmsi를 동시에 보내면 mmsi가 우선되므로
+# 반드시 둘 중 하나만 보낸다.
 BULK_URL = (
-    "https://api.marinesia.com/api/v1/"
+    "https://api.marinesia.com/api/v2/"
     "vessel/location/latest/bulk"
 )
 
@@ -53,9 +55,11 @@ API_FIELDS = [
 ]
 
 OUTPUT_FIELDS = [
-    "company",
     "vessel_name",
-    "query_mmsi_no",
+    "imo_no",
+    "registered_mmsi_no",
+    "query_key",
+    "mmsi_changed",
     "record_index",
     *API_FIELDS,
     "fetched_at",
@@ -87,7 +91,37 @@ def normalize_mmsi(value: Any) -> str:
     return mmsi
 
 
+def normalize_imo(value: Any) -> str:
+    """IMO 7자리 + 체크디지트 검증. 실패 시 ValueError."""
+    imo = str(value or "").strip().upper()
+
+    if imo.startswith("IMO"):
+        imo = imo[3:].strip()
+
+    if not imo:
+        raise ValueError("IMO is empty")
+
+    if not imo.isdigit():
+        raise ValueError(f"IMO must contain digits only: {imo}")
+
+    if len(imo) != 7:
+        raise ValueError(f"IMO must be 7 digits: {imo}")
+
+    # 앞 6자리에 가중치 7,6,5,4,3,2를 곱한 합의 끝자리가 7번째 자리와 같아야 한다
+    checksum = sum(int(imo[i]) * (7 - i) for i in range(6))
+
+    if checksum % 10 != int(imo[6]):
+        raise ValueError(f"IMO check digit mismatch: {imo}")
+
+    return imo
+
+
 def load_vessels() -> List[Dict[str, str]]:
+    """
+    input/vessels.json을 읽어 IMO 기준으로 중복을 제거한 목록을 반환한다.
+
+    IMO가 없는 선박(소형선 등)은 MMSI로 조회한다.
+    """
     path = Path(INPUT_PATH)
 
     if not path.exists():
@@ -100,55 +134,79 @@ def load_vessels() -> List[Dict[str, str]]:
         raise ValueError("input/vessels.json must contain a JSON list")
 
     vessels: List[Dict[str, str]] = []
+    seen: Dict[str, str] = {}
+    no_imo = 0
 
     for index, row in enumerate(data, start=1):
         if not isinstance(row, dict):
             raise ValueError(f"Row {index} must be a JSON object")
 
-        company = str(row.get("company") or "").strip().upper()
         vessel_name = str(row.get("vessel_name") or "").strip()
-        mmsi_no = normalize_mmsi(row.get("mmsi_no"))
-
-        if not company:
-            raise ValueError(f"Row {index}: company is empty")
 
         if not vessel_name:
             raise ValueError(f"Row {index}: vessel_name is empty")
 
+        raw_imo = str(row.get("imo_no") or "").strip()
+        mmsi_no = ""
+
+        if row.get("mmsi_no"):
+            try:
+                mmsi_no = normalize_mmsi(row.get("mmsi_no"))
+            except ValueError as exc:
+                print(f"[WARN] Row {index} ({vessel_name}): {exc}")
+
+        if raw_imo:
+            imo_no = normalize_imo(raw_imo)
+            key = imo_no
+            query_by = "imo"
+        else:
+            # IMO 미확보 선박은 MMSI로 조회한다 (bootstrap_imo.py로 보완 가능)
+            if not mmsi_no:
+                raise ValueError(
+                    f"Row {index} ({vessel_name}): imo_no와 mmsi_no가 모두 없음"
+                )
+            imo_no = ""
+            key = mmsi_no
+            query_by = "mmsi"
+            no_imo += 1
+            print(f"[WARN] {vessel_name}: IMO 없음. MMSI {mmsi_no}로 조회합니다")
+
+        if key in seen:
+            print(f"[INFO] Duplicate key skipped: {key} ({vessel_name})")
+            continue
+
+        seen[key] = vessel_name
         vessels.append(
             {
-                "company": company,
                 "vessel_name": vessel_name,
+                "imo_no": imo_no,
                 "mmsi_no": mmsi_no,
+                "query_key": key,
+                "query_by": query_by,
             }
         )
+
+    print(
+        f"[INFO] Loaded {len(vessels)} unique vessels from {len(data)} rows "
+        f"(IMO 조회 {len(vessels) - no_imo}척, MMSI 조회 {no_imo}척)"
+    )
 
     return vessels
 
 
-def group_vessels_by_mmsi(
+def group_vessels_by_key(
     vessels: List[Dict[str, str]],
 ) -> Dict[str, List[Dict[str, str]]]:
-    """
-    동일 MMSI를 법인·선박명 매핑 목록으로 묶는다.
-
-    예:
-    {
-      "414195000": [
-        {"company": "SKBA", "vessel_name": "REN JIAN 8"},
-        {"company": "SKBM", "vessel_name": "REN JIAN 8"}
-      ]
-    }
-    """
+    """조회 키(IMO 우선, 없으면 MMSI)별 선박 매핑을 만든다."""
     grouped: Dict[str, List[Dict[str, str]]] = {}
 
     for vessel in vessels:
-        mmsi_no = vessel["mmsi_no"]
-
-        grouped.setdefault(mmsi_no, []).append(
+        grouped.setdefault(vessel["query_key"], []).append(
             {
-                "company": vessel["company"],
                 "vessel_name": vessel["vessel_name"],
+                "imo_no": vessel["imo_no"],
+                "mmsi_no": vessel["mmsi_no"],
+                "query_by": vessel["query_by"],
             }
         )
 
@@ -216,34 +274,37 @@ def normalize_bulk_data(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     return []
 
 
-def select_latest_by_mmsi(
+def select_latest_by_key(
     records: List[Dict[str, Any]],
 ) -> Dict[str, Dict[str, Any]]:
     """
-    응답에 같은 MMSI가 여러 번 들어오더라도 ts 기준 최신 1건만 선택한다.
+    응답 레코드를 IMO와 MMSI 양쪽 키로 색인한다.
+
+    IMO로 조회해도 응답에는 mmsi와 imo가 함께 오므로
+    두 키 모두로 찾을 수 있게 해 둔다.
+    같은 키가 여러 번 오면 ts 기준 최신 1건만 남긴다.
     """
     result: Dict[str, Dict[str, Any]] = {}
 
-    for record in records:
-        mmsi = str(record.get("mmsi") or "").strip()
+    def put(key: str, record: Dict[str, Any]) -> None:
+        if not key:
+            return
 
-        if not mmsi:
-            continue
-
-        current = result.get(mmsi)
+        current = result.get(key)
 
         if current is None:
-            result[mmsi] = record
-            continue
+            result[key] = record
+            return
 
         record_ts = str(record.get("ts") or "")
         current_ts = str(current.get("ts") or "")
 
-        if record_ts and (
-            not current_ts
-            or record_ts > current_ts
-        ):
-            result[mmsi] = record
+        if record_ts and (not current_ts or record_ts > current_ts):
+            result[key] = record
+
+    for record in records:
+        put(str(record.get("imo") or "").strip(), record)
+        put(str(record.get("mmsi") or "").strip(), record)
 
     return result
 
@@ -251,24 +312,31 @@ def select_latest_by_mmsi(
 def fetch_bulk(
     session: requests.Session,
     api_key: str,
-    mmsi_batch: List[str],
+    key_batch: List[str],
+    query_by: str,
 ) -> Dict[str, Any]:
     """
-    최대 10개의 MMSI를 한 번의 API 요청으로 조회한다.
-    """
-    if not mmsi_batch:
-        raise ValueError("mmsi_batch is empty")
+    최대 10척을 한 번의 v2 Bulk 요청으로 조회한다.
 
-    if len(mmsi_batch) > BULK_SIZE:
+    query_by가 "imo"이면 imo 파라미터만, "mmsi"이면 mmsi 파라미터만 보낸다.
+    (v2는 둘 다 채우면 mmsi를 우선 적용하므로 반드시 하나만 보낸다.)
+    """
+    if not key_batch:
+        raise ValueError("key_batch is empty")
+
+    if len(key_batch) > BULK_SIZE:
         raise ValueError(
-            f"Bulk request supports max {BULK_SIZE} MMSIs, "
-            f"received {len(mmsi_batch)}"
+            f"Bulk request supports max {BULK_SIZE} vessels, "
+            f"received {len(key_batch)}"
         )
+
+    if query_by not in ("imo", "mmsi"):
+        raise ValueError(f"Unsupported query_by: {query_by}")
 
     response = session.get(
         BULK_URL,
         params={
-            "mmsi": ",".join(mmsi_batch),
+            query_by: ",".join(key_batch),
             "key": api_key,
         },
         timeout=60,
@@ -289,25 +357,20 @@ def fetch_bulk(
 
 def expand_bulk_response(
     payload: Dict[str, Any],
-    mmsi_batch: List[str],
+    key_batch: List[str],
     grouped: Dict[str, List[Dict[str, str]]],
     fetched_at: str,
 ) -> List[Dict[str, Any]]:
-    """
-    Bulk 응답을 기존 raw_results 구조로 변환한다.
-
-    따라서 flatten_rows()와 build_latest_snapshot()은
-    수정하지 않고 그대로 사용할 수 있다.
-    """
+    """Bulk 응답을 기존 raw_results 구조로 변환한다."""
     result: List[Dict[str, Any]] = []
 
     api_error = bool(payload.get("error"))
     api_message = payload.get("message")
     records = normalize_bulk_data(payload)
-    records_by_mmsi = select_latest_by_mmsi(records)
+    records_by_key = select_latest_by_key(records)
 
-    for mmsi_no in mmsi_batch:
-        record = records_by_mmsi.get(mmsi_no)
+    for query_key in key_batch:
+        record = records_by_key.get(query_key)
 
         if api_error:
             vessel_response = {
@@ -319,35 +382,28 @@ def expand_bulk_response(
         elif record is None:
             vessel_response = {
                 "error": False,
-                "message": (
-                    f"No latest location returned for MMSI "
-                    f"{mmsi_no}"
-                ),
+                "message": f"No latest location returned for {query_key}",
                 "data": [],
             }
 
         else:
             vessel_response = {
                 "error": False,
-                "message": (
-                    api_message
-                    or "Successfully fetched data"
-                ),
-                # 기존 flatten_rows()가 data 배열을 처리하므로
-                # 최신 위치 1건도 배열 형태로 유지
+                "message": api_message or "Successfully fetched data",
                 "data": [record],
             }
 
         result.append(
             {
-                "query_mmsi_no": mmsi_no,
+                "query_key": query_key,
                 "fetched_at": fetched_at,
-                "mappings": grouped.get(mmsi_no, []),
+                "mappings": grouped.get(query_key, []),
                 "response": vessel_response,
             }
         )
 
     return result
+
 
 def build_empty_api_values() -> Dict[str, Any]:
     return {field: None for field in API_FIELDS}
@@ -357,15 +413,16 @@ def flatten_rows(
     raw_results: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     """
-    고유 MMSI별 API 응답을 법인·선박 매핑별 테이블 행으로 확장한다.
+    조회 키별 API 응답을 테이블 행으로 펼친다.
 
-    동일 MMSI가 SKBA와 SKBM 양쪽에 있으면 동일 응답이
-    각 법인 행에 각각 포함된다.
+    등록된 MMSI와 API가 반환한 MMSI가 다르면 mmsi_changed 플래그를 세운다.
+    선박이 재선적(reflag)되어 MMSI가 재발급된 경우를 잡아내기 위한 것으로,
+    IMO를 기준키로 쓸 때만 가능한 자가 점검이다.
     """
     rows: List[Dict[str, Any]] = []
 
     for item in raw_results:
-        query_mmsi_no = item["query_mmsi_no"]
+        query_key = item["query_key"]
         fetched_at = item["fetched_at"]
         mappings = item.get("mappings") or []
         payload = item.get("response") or {}
@@ -378,15 +435,15 @@ def flatten_rows(
         if not isinstance(data_list, list):
             data_list = []
 
-        # API 오류 또는 위치 이력이 없는 경우에도
-        # 입력 선박별로 한 행을 생성한다.
         if api_error or not data_list:
             for mapping in mappings:
                 rows.append(
                     {
-                        "company": mapping.get("company"),
                         "vessel_name": mapping.get("vessel_name"),
-                        "query_mmsi_no": query_mmsi_no,
+                        "imo_no": mapping.get("imo_no"),
+                        "registered_mmsi_no": mapping.get("mmsi_no"),
+                        "query_key": query_key,
+                        "mmsi_changed": None,
                         "record_index": None,
                         **build_empty_api_values(),
                         "fetched_at": fetched_at,
@@ -397,16 +454,34 @@ def flatten_rows(
 
             continue
 
-        # API가 반환한 모든 위치 이력을 법인별로 확장한다.
         for mapping in mappings:
             for record_index, data in enumerate(data_list, start=1):
                 if not isinstance(data, dict):
                     continue
 
+                registered_mmsi = str(mapping.get("mmsi_no") or "")
+                api_mmsi = str(data.get("mmsi") or "").strip()
+
+                mmsi_changed = bool(
+                    registered_mmsi
+                    and api_mmsi
+                    and registered_mmsi != api_mmsi
+                )
+
+                if mmsi_changed and record_index == 1:
+                    print(
+                        f"[ALERT] {mapping.get('vessel_name')} "
+                        f"(IMO {mapping.get('imo_no')}): "
+                        f"MMSI 변경 감지 {registered_mmsi} -> {api_mmsi}. "
+                        "재선적 가능성이 있으니 vessels.json을 갱신하세요"
+                    )
+
                 row = {
-                    "company": mapping.get("company"),
                     "vessel_name": mapping.get("vessel_name"),
-                    "query_mmsi_no": query_mmsi_no,
+                    "imo_no": mapping.get("imo_no"),
+                    "registered_mmsi_no": registered_mmsi,
+                    "query_key": query_key,
+                    "mmsi_changed": mmsi_changed,
                     "record_index": record_index,
                 }
 
@@ -426,23 +501,15 @@ def build_latest_snapshot(
     rows: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     """
-    company + vessel_name + MMSI별 최신 위치 1건을 남긴다.
-
-    같은 MMSI가 서로 다른 법인에 등록되어 있어도
-    법인별 최신 행이 각각 보존된다.
+    vessel_name + 조회키별 최신 위치 1건을 남긴다.
     """
     latest_map: Dict[str, Dict[str, Any]] = {}
 
     for row in rows:
-        company = str(row.get("company") or "")
         vessel_name = str(row.get("vessel_name") or "")
-        mmsi_no = str(
-            row.get("query_mmsi_no")
-            or row.get("mmsi")
-            or ""
-        )
+        query_key = str(row.get("query_key") or row.get("mmsi") or "")
 
-        vessel_key = f"{company}|{vessel_name}|{mmsi_no}"
+        vessel_key = f"{vessel_name}|{query_key}"
 
         current = latest_map.get(vessel_key)
 
@@ -461,9 +528,8 @@ def build_latest_snapshot(
 
     latest_rows.sort(
         key=lambda row: (
-            str(row.get("company") or ""),
             str(row.get("vessel_name") or ""),
-            str(row.get("query_mmsi_no") or ""),
+            str(row.get("query_key") or ""),
         )
     )
 
@@ -606,22 +672,22 @@ def main() -> None:
     ensure_dir("output")
 
     vessels = load_vessels()
-    grouped = group_vessels_by_mmsi(vessels)
+    grouped = group_vessels_by_key(vessels)
 
-    unique_mmsi_list = list(grouped.keys())
-    batches = chunked(
-        unique_mmsi_list,
-        BULK_SIZE,
-    )
+    imo_keys = [v["query_key"] for v in vessels if v["query_by"] == "imo"]
+    mmsi_keys = [v["query_key"] for v in vessels if v["query_by"] == "mmsi"]
 
-    print(f"[INFO] Total vessel mappings: {len(vessels)}")
-    print(f"[INFO] Unique MMSIs: {len(unique_mmsi_list)}")
+    # (query_by, batch) 튜플 목록. IMO와 MMSI는 파라미터가 달라 섞을 수 없다.
+    batches: List[tuple] = [
+        ("imo", b) for b in chunked(imo_keys, BULK_SIZE)
+    ] + [
+        ("mmsi", b) for b in chunked(mmsi_keys, BULK_SIZE)
+    ]
+
+    print(f"[INFO] Total vessels: {len(vessels)}")
+    print(f"[INFO] IMO 조회: {len(imo_keys)}척 / MMSI 조회: {len(mmsi_keys)}척")
     print(f"[INFO] Bulk request size: {BULK_SIZE}")
     print(f"[INFO] Total Bulk API requests: {len(batches)}")
-    print(
-        f"[INFO] Duplicate MMSI requests avoided: "
-        f"{len(vessels) - len(unique_mmsi_list)}"
-    )
 
     raw_results: List[Dict[str, Any]] = []
 
@@ -639,7 +705,7 @@ def main() -> None:
             }
         )
 
-        for batch_index, mmsi_batch in enumerate(
+        for batch_index, (query_by, key_batch) in enumerate(
             batches,
             start=1,
         ):
@@ -648,8 +714,9 @@ def main() -> None:
             print(
                 f"[INFO] Bulk request "
                 f"{batch_index}/{len(batches)} | "
-                f"vessels={len(mmsi_batch)} | "
-                f"MMSI={','.join(mmsi_batch)}"
+                f"by={query_by} | "
+                f"vessels={len(key_batch)} | "
+                f"keys={','.join(key_batch)}"
             )
 
             fetched_at = now_iso()
@@ -658,12 +725,13 @@ def main() -> None:
                 payload = fetch_bulk(
                     session=session,
                     api_key=api_key,
-                    mmsi_batch=mmsi_batch,
+                    key_batch=key_batch,
+                    query_by=query_by,
                 )
 
                 batch_results = expand_bulk_response(
                     payload=payload,
-                    mmsi_batch=mmsi_batch,
+                    key_batch=key_batch,
                     grouped=grouped,
                     fetched_at=fetched_at,
                 )
@@ -676,25 +744,25 @@ def main() -> None:
 
                 print(
                     f"[INFO] Bulk request success | "
-                    f"requested={len(mmsi_batch)}, "
+                    f"requested={len(key_batch)}, "
                     f"returned={len(returned_records)}"
                 )
 
             except Exception as exc:
                 print(
                     f"[WARN] Bulk request failed | "
-                    f"MMSI={','.join(mmsi_batch)} | "
+                    f"keys={','.join(key_batch)} | "
                     f"error={exc}"
                 )
 
                 # Bulk 요청 하나가 실패하더라도 다른 batch는 계속 진행한다.
-                for mmsi_no in mmsi_batch:
+                for query_key in key_batch:
                     raw_results.append(
                         {
-                            "query_mmsi_no": mmsi_no,
+                            "query_key": query_key,
                             "fetched_at": fetched_at,
                             "mappings": grouped.get(
-                                mmsi_no,
+                                query_key,
                                 [],
                             ),
                             "response": {
