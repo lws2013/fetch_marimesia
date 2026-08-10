@@ -35,6 +35,11 @@
     "mmsi_no": "636093160"
   },
   {
+    "vessel_name": "BFAD PACIFIC",
+    "imo_no": "9364203",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "BRUSSELS EXPRESS",
     "imo_no": "9708784",
     "mmsi_no": "211108000"
@@ -45,9 +50,19 @@
     "mmsi_no": "215125000"
   },
   {
+    "vessel_name": "CMA CGM ARGENTINA",
+    "imo_no": "9839909",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "CMA CGM ARGON",
     "imo_no": "9996692",
     "mmsi_no": "249533000"
+  },
+  {
+    "vessel_name": "CMA CGM COLUMBA",
+    "imo_no": "9410789",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "CMA CGM CYRANO",
@@ -55,9 +70,19 @@
     "mmsi_no": "248161000"
   },
   {
+    "vessel_name": "CMA CGM EUGENIE",
+    "imo_no": "9996991",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "CMA CGM HERMES",
     "imo_no": "9882499",
     "mmsi_no": "229454000"
+  },
+  {
+    "vessel_name": "CMA CGM JULES VERNE",
+    "imo_no": "9454450",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "CMA CGM MONTE CRISTO",
@@ -80,6 +105,11 @@
     "mmsi_no": "229321000"
   },
   {
+    "vessel_name": "COSCO ITALY",
+    "imo_no": "9516454",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "COSCO SHIPPING LOTUS",
     "imo_no": "9785811",
     "mmsi_no": "477269400"
@@ -88,6 +118,21 @@
     "vessel_name": "ERASMUS CHIEF",
     "imo_no": "9449857",
     "mmsi_no": "352004606"
+  },
+  {
+    "vessel_name": "EVER FRANK",
+    "imo_no": "9850587",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "EVER FULL",
+    "imo_no": "9850903",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "GENOVA EXPRESS",
+    "imo_no": "9943906",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "GRASMERE MAERSK",
@@ -100,9 +145,34 @@
     "mmsi_no": "477909700"
   },
   {
+    "vessel_name": "HAMBURG EXPRESS",
+    "imo_no": "9943865",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "HE YANG",
+    "imo_no": "9179476",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "HMM RAON",
+    "imo_no": "9869215",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "HONOR PROSPER",
     "imo_no": "9250933",
     "mmsi_no": "311002270"
+  },
+  {
+    "vessel_name": "JI YUN 16",
+    "imo_no": "8357332",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "JOSEPHINE MAERSK",
+    "imo_no": "9215191",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "JPO LIBRA",
@@ -118,6 +188,21 @@
     "vessel_name": "KMP NEW CAMELLIA",
     "imo_no": "",
     "mmsi_no": "572935000"
+  },
+  {
+    "vessel_name": "LING YUN HE",
+    "imo_no": "9223772",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "LUCKY BLESSING",
+    "imo_no": "9182021",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "MAERSK ATHABASCA",
+    "imo_no": "9398424",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "MAERSK CAMDEN",
@@ -140,6 +225,16 @@
     "mmsi_no": "563052700"
   },
   {
+    "vessel_name": "MAERSK HORSBURGH",
+    "imo_no": "9784269",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "MAERSK SHAMS",
+    "imo_no": "9726669",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "MAERSK TAURUS",
     "imo_no": "",
     "mmsi_no": "565762000"
@@ -150,6 +245,11 @@
     "mmsi_no": "564837000"
   },
   {
+    "vessel_name": "MAERSK VARNA",
+    "imo_no": "9411379",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "MAERSK VIGO",
     "imo_no": "",
     "mmsi_no": "236037000"
@@ -158,6 +258,16 @@
     "vessel_name": "MAERSK VIGO",
     "imo_no": "9401697",
     "mmsi_no": "419002072"
+  },
+  {
+    "vessel_name": "MAKHA BHUM",
+    "imo_no": "9801512",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "MERATUS MEDAN 5",
+    "imo_no": "9178393",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "MERKUR ARCHIPELAGO",
@@ -200,9 +310,19 @@
     "mmsi_no": "371218000"
   },
   {
+    "vessel_name": "MSC FLORENTINA",
+    "imo_no": "9251705",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "MSC GABON",
     "imo_no": "9974539",
     "mmsi_no": "636024642"
+  },
+  {
+    "vessel_name": "MSC MAEVA",
+    "imo_no": "9289128",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "MSC SALERNO",
@@ -235,6 +355,21 @@
     "mmsi_no": "636093154"
   },
   {
+    "vessel_name": "NUUK MAERSK",
+    "imo_no": "9885178",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "OEL RUDRA",
+    "imo_no": "9303778",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "ONE ATLAS",
+    "imo_no": "9290115",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "ONE STORK",
     "imo_no": "9784788",
     "mmsi_no": "431986000"
@@ -253,6 +388,11 @@
     "vessel_name": "PACIFIC SINGAPORE",
     "imo_no": "9433937",
     "mmsi_no": "563147400"
+  },
+  {
+    "vessel_name": "POTOMAC EXPRESS",
+    "imo_no": "9349526",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "REN JIAN 15",
@@ -275,6 +415,16 @@
     "mmsi_no": "355925000"
   },
   {
+    "vessel_name": "SALVADOR EXPRESS",
+    "imo_no": "9793894",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "SEASPAN HARMONY",
+    "imo_no": "9472177",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "SEASPAN LINGUE",
     "imo_no": "9443475",
     "mmsi_no": "563280600"
@@ -290,6 +440,11 @@
     "mmsi_no": "477112300"
   },
   {
+    "vessel_name": "SITC RENHE",
+    "imo_no": "9943633",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "SKY PEACE",
     "imo_no": "1034400",
     "mmsi_no": "352005758"
@@ -300,14 +455,39 @@
     "mmsi_no": "514317000"
   },
   {
+    "vessel_name": "STARSHIP TAURUS",
+    "imo_no": "9792498",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "SUAPE EXPRESS",
     "imo_no": "9332858",
     "mmsi_no": "636093100"
   },
   {
+    "vessel_name": "SUNNY ORCHID",
+    "imo_no": "1034955",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "TALOS",
+    "imo_no": "7043843",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "TAN CANG GLORY",
     "imo_no": "9334105",
     "mmsi_no": "574002930"
+  },
+  {
+    "vessel_name": "TANGIER MAERSK",
+    "imo_no": "1029338",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "TC MESSENGER",
+    "imo_no": "9342798",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "ULSAN",
@@ -335,6 +515,11 @@
     "mmsi_no": "215561000"
   },
   {
+    "vessel_name": "WAN HAI 309",
+    "imo_no": "9348900",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "YANTIAN EXPRESS",
     "imo_no": "9229831",
     "mmsi_no": "636093161"
@@ -343,6 +528,16 @@
     "vessel_name": "YM WILLPOWER",
     "imo_no": "1019785",
     "mmsi_no": "636024525"
+  },
+  {
+    "vessel_name": "ZHONG WAI YUN NING BO",
+    "imo_no": "9367956",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "ZIM ALEXANDRITE",
+    "imo_no": "9968085",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "ZIM WILMINGTON",
