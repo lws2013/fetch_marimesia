@@ -1,0 +1,61 @@
+name: Bootstrap IMO
+
+# IMO 미확보 선박의 IMO 번호를 Marinesia API로 조회해 vessels.json에 채운다.
+# 수동 실행 전용. 스케줄 없음.
+#
+# 실행 방법:
+#   Actions 탭 → 왼쪽 목록에서 "Bootstrap IMO" → Run workflow
+#   dry_run 을 true 로 두면 조회만 하고 파일을 바꾸지 않는다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "조회만 하고 저장하지 않음 (먼저 이걸로 확인 권장)"
+        type: boolean
+        default: true
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Bootstrap IMO
+        env:
+          MARINESIA_API_KEY: ${{ secrets.MARINESIA_API_KEY }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python scripts/bootstrap_imo.py --dry-run
+          else
+            python scripts/bootstrap_imo.py
+          fi
+
+      - name: Commit
+        if: inputs.dry_run == false
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add input/vessels.json
+          if git diff --staged --quiet; then
+            echo "IMO 변경 없음"
+          else
+            git commit -m "chore: IMO 번호 보완"
+            git push
+          fi
