@@ -120,6 +120,11 @@
     "mmsi_no": "352004606"
   },
   {
+    "vessel_name": "EVER FOCUS",
+    "imo_no": "9850537",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "EVER FRANK",
     "imo_no": "9850587",
     "mmsi_no": ""
@@ -127,6 +132,11 @@
   {
     "vessel_name": "EVER FULL",
     "imo_no": "9850903",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "FU TU LIAN XING",
+    "imo_no": "9258715",
     "mmsi_no": ""
   },
   {
@@ -517,6 +527,11 @@
   {
     "vessel_name": "WAN HAI 309",
     "imo_no": "9348900",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "WAN HAI 376",
+    "imo_no": "9954503",
     "mmsi_no": ""
   },
   {
