@@ -95,6 +95,11 @@
     "mmsi_no": "215347000"
   },
   {
+    "vessel_name": "CMA CGM RIO GRANDE",
+    "imo_no": "9722699",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "CMA CGM SYMI",
     "imo_no": "9867839",
     "mmsi_no": "229779000"
@@ -103,6 +108,11 @@
     "vessel_name": "CMA CGM ZEPHYR",
     "imo_no": "9882487",
     "mmsi_no": "229321000"
+  },
+  {
+    "vessel_name": "CNC SERVAL",
+    "imo_no": "9784647",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "COSCO ITALY",
@@ -240,6 +250,11 @@
     "mmsi_no": ""
   },
   {
+    "vessel_name": "MAERSK NARVIK",
+    "imo_no": "9894648",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "MAERSK SHAMS",
     "imo_no": "9726669",
     "mmsi_no": ""
@@ -330,6 +345,11 @@
     "mmsi_no": "636024642"
   },
   {
+    "vessel_name": "MSC LORENZA",
+    "imo_no": "9962598",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "MSC MAEVA",
     "imo_no": "9289128",
     "mmsi_no": ""
@@ -398,6 +418,11 @@
     "vessel_name": "PACIFIC SINGAPORE",
     "imo_no": "9433937",
     "mmsi_no": "563147400"
+  },
+  {
+    "vessel_name": "PALU BAY",
+    "imo_no": "9983413",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "POTOMAC EXPRESS",
@@ -473,6 +498,11 @@
     "vessel_name": "SUAPE EXPRESS",
     "imo_no": "9332858",
     "mmsi_no": "636093100"
+  },
+  {
+    "vessel_name": "SUNNY LAVENDER",
+    "imo_no": "9748411",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "SUNNY ORCHID",
