@@ -10,6 +10,11 @@
     "mmsi_no": "636093137"
   },
   {
+    "vessel_name": "AL JMELIYAH",
+    "imo_no": "9732357",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "AL MANAMAH",
     "imo_no": "9349538",
     "mmsi_no": "636093140"
@@ -103,6 +108,11 @@
     "vessel_name": "CMA CGM SYMI",
     "imo_no": "9867839",
     "mmsi_no": "229779000"
+  },
+  {
+    "vessel_name": "CMA CGM VALPARAISO",
+    "imo_no": "9294185",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "CMA CGM ZEPHYR",
@@ -200,6 +210,11 @@
     "mmsi_no": "636090862"
   },
   {
+    "vessel_name": "K-PACIFIC",
+    "imo_no": "9246542",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "KIEL EXPRESS",
     "imo_no": "9229855",
     "mmsi_no": "636093170"
@@ -255,6 +270,11 @@
     "mmsi_no": ""
   },
   {
+    "vessel_name": "MAERSK SEVILLE",
+    "imo_no": "9299927",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "MAERSK SHAMS",
     "imo_no": "9726669",
     "mmsi_no": ""
@@ -287,6 +307,11 @@
   {
     "vessel_name": "MAKHA BHUM",
     "imo_no": "9801512",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "MARTIN SCHULTE",
+    "imo_no": "9694402",
     "mmsi_no": ""
   },
   {
@@ -355,6 +380,11 @@
     "mmsi_no": ""
   },
   {
+    "vessel_name": "MSC PANTERA",
+    "imo_no": "9975557",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "MSC SALERNO",
     "imo_no": "9968322",
     "mmsi_no": "636025635"
@@ -363,6 +393,11 @@
     "vessel_name": "MSC SONIA",
     "imo_no": "9404663",
     "mmsi_no": "353160000"
+  },
+  {
+    "vessel_name": "MSC TOPAZ",
+    "imo_no": "9502908",
+    "mmsi_no": ""
   },
   {
     "vessel_name": "MSC UTMOST VIII",
@@ -397,6 +432,11 @@
   {
     "vessel_name": "ONE ATLAS",
     "imo_no": "9290115",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "ONE MEISHAN",
+    "imo_no": "9805465",
     "mmsi_no": ""
   },
   {
@@ -435,6 +475,11 @@
     "mmsi_no": "414931000"
   },
   {
+    "vessel_name": "REN JIAN 16",
+    "imo_no": "9450911",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "REN JIAN 8",
     "imo_no": "9326756",
     "mmsi_no": "414195000"
@@ -452,6 +497,11 @@
   {
     "vessel_name": "SALVADOR EXPRESS",
     "imo_no": "9793894",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "SAWASDEE PACIFIC",
+    "imo_no": "9879363",
     "mmsi_no": ""
   },
   {
@@ -495,6 +545,11 @@
     "mmsi_no": ""
   },
   {
+    "vessel_name": "STARSHIP VENUS",
+    "imo_no": "9981116",
+    "mmsi_no": ""
+  },
+  {
     "vessel_name": "SUAPE EXPRESS",
     "imo_no": "9332858",
     "mmsi_no": "636093100"
@@ -527,6 +582,11 @@
   {
     "vessel_name": "TC MESSENGER",
     "imo_no": "9342798",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "TEN JUPITER",
+    "imo_no": "9383534",
     "mmsi_no": ""
   },
   {
@@ -582,6 +642,11 @@
   {
     "vessel_name": "ZIM ALEXANDRITE",
     "imo_no": "9968085",
+    "mmsi_no": ""
+  },
+  {
+    "vessel_name": "ZIM TOPAZ",
+    "imo_no": "9968023",
     "mmsi_no": ""
   },
   {
